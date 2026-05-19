@@ -31,6 +31,9 @@ export default function ChatPage() {
   const typingTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const selfTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks the highest message id we have already POSTed to /messages/read per chat,
+  // so the mark-as-read effect does not re-fire for the same message id and loop forever.
+  const lastReadByChatRef = useRef<Record<number, number>>({});
 
   // Auth check + bootstrap
   useEffect(() => {
@@ -176,12 +179,16 @@ export default function ChatPage() {
     if (!selectedChat || !user) return;
     const last = chatMessages[chatMessages.length - 1];
     if (!last) return;
-    if (selectedChat.unread_count === 0 && last.sender_id === user.id) return;
     if (last.sender_id === user.id) return;
+    const alreadyRead = lastReadByChatRef.current[selectedChat.id] ?? 0;
+    if (last.id <= alreadyRead) return;
+    lastReadByChatRef.current[selectedChat.id] = last.id;
     api.markRead(selectedChat.id, last.id).catch(() => undefined);
-    setChats((cur) =>
-      cur.map((c) => (c.id === selectedChat.id ? { ...c, unread_count: 0 } : c)),
-    );
+    if (selectedChat.unread_count !== 0) {
+      setChats((cur) =>
+        cur.map((c) => (c.id === selectedChat.id ? { ...c, unread_count: 0 } : c)),
+      );
+    }
   }, [selectedChat, chatMessages, user]);
 
   // Auto-scroll on new messages
