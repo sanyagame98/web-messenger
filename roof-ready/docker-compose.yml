@@ -1,0 +1,120 @@
+services:
+  kafka:
+    image: apache/kafka:3.9.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9094,CONTROLLER://localhost:9093,PLAINTEXT_CONTAINER://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9094,PLAINTEXT_CONTAINER://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_CONTAINER:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks: [teamgram_net]
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.11
+    environment:
+      ETCD_NAME: node1
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd:2379
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd:2380
+      ETCD_INITIAL_CLUSTER: node1=http://etcd:2380
+      ETCD_INITIAL_CLUSTER_TOKEN: teamgram-etcd
+      ETCD_INITIAL_CLUSTER_STATE: new
+    volumes: [etcd_data:/etcd-data]
+    networks: [teamgram_net]
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes: [redis_data:/data]
+    networks: [teamgram_net]
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: teamgram
+      MYSQL_USER: teamgram
+      MYSQL_PASSWORD: teamgram
+    command: ["--character-set-server=utf8mb4","--collation-server=utf8mb4_unicode_ci","--default-authentication-plugin=mysql_native_password"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./teamgramd/deploy/sql:/docker-entrypoint-initdb.d:ro
+    networks: [teamgram_net]
+
+  minio:
+    image: minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: miniostorage
+    command: server /data --console-address ":9001"
+    volumes: [minio_data:/data]
+    networks: [teamgram_net]
+
+  minio-mc:
+    image: minio/mc:latest
+    depends_on: [minio]
+    entrypoint: ["/bin/sh","-c"]
+    command: >
+      sleep 8; mc alias set roof http://minio:9000 minio miniostorage;
+      mc mb roof/documents --ignore-existing; mc mb roof/encryptedfiles --ignore-existing;
+      mc mb roof/photos --ignore-existing; mc mb roof/videos --ignore-existing
+    networks: [teamgram_net]
+
+  teamgram:
+    image: roof-teamgram:ready
+    restart: unless-stopped
+    depends_on: [mysql,redis,etcd,kafka,minio]
+    ports:
+      - "10443:10443"
+      - "11443:11443"
+      - "5222:5222"
+      - "8801:8801"
+    networks: [teamgram_net]
+
+  roof-web:
+    image: nginx:alpine
+    restart: unless-stopped
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+    ports:
+      - "8080:80"
+    networks: [teamgram_net]
+
+  roof-wallet-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: roof
+      POSTGRES_PASSWORD: roof
+      POSTGRES_DB: roof
+    volumes: [roof_wallet_data:/var/lib/postgresql/data]
+    networks: [teamgram_net]
+
+  roof-wallet:
+    image: roof-wallet:ready
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://roof:roof@roof-wallet-db:5432/roof
+      TEST_CARD_ENABLED: "true"
+    depends_on: [roof-wallet-db]
+    ports:
+      - "8787:8787"
+    networks: [teamgram_net]
+
+volumes:
+  etcd_data:
+  redis_data:
+  mysql_data:
+  minio_data:
+  roof_wallet_data:
+
+networks:
+  teamgram_net:
+    driver: bridge
