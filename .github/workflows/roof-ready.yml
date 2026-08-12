@@ -1,0 +1,117 @@
+name: Build Roof Ready
+
+on:
+  push:
+    branches: [roof-cloud-build]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare sources
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf _build
+          mkdir -p _build
+          git clone --depth 1 https://github.com/teamgram/teamgram-server.git _build/teamgram-server
+          git clone --depth 1 --branch teamgram https://github.com/teamgram/teamgram-tweb.git _build/teamgram-tweb
+          printf 'data/\n.git/\n' > _build/teamgram-server/.dockerignore
+          find _build/teamgram-server -type f -name '*.sh' -exec sed -i 's/\r$//' {} +
+
+      - name: Build Teamgram server image
+        shell: bash
+        run: |
+          set -euxo pipefail
+          docker build -t roof-teamgram:ready _build/teamgram-server
+
+      - name: Build Roof Wallet image
+        shell: bash
+        run: |
+          set -euxo pipefail
+          docker build -t roof-wallet:ready roof-ready/wallet
+
+      - name: Build Roof Web
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd _build/teamgram-tweb
+          corepack enable
+          pnpm install --frozen-lockfile
+          node build.js || pnpm run build
+          cd ../..
+          rm -rf roof-ready/web
+          mkdir -p roof-ready/web
+          cp -a _build/teamgram-tweb/public/. roof-ready/web/
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('roof-ready/web')
+          for p in root.rglob('*'):
+              if p.is_file() and p.suffix.lower() in {'.html','.json','.webmanifest','.txt','.xml'}:
+                  try: s=p.read_text(encoding='utf-8')
+                  except: continue
+                  s=s.replace('Telegram Web K','Roof').replace('Telegram Web','Roof').replace('Teamgram Web','Roof')
+                  p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Add Teamgram runtime configs
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf roof-ready/teamgramd
+          cp -a _build/teamgram-server/teamgramd roof-ready/teamgramd
+          rm -rf roof-ready/teamgramd/bin || true
+
+      - name: Save prebuilt Docker images
+        shell: bash
+        run: |
+          set -euxo pipefail
+          docker save roof-teamgram:ready roof-wallet:ready | gzip -1 > roof-ready/roof-images.tar.gz
+          sed -i 's/roof-teamgram-image.tar.gz/roof-images.tar.gz/g' roof-ready/START_ROOF.bat
+          sed -i 's/docker load -i roof-teamgram-image.tar.gz/docker load -i roof-images.tar.gz/g' roof-ready/START_ROOF.bat
+
+      - name: Add ready README
+        shell: bash
+        run: |
+          cat > roof-ready/README_READY.txt <<'EOF'
+          ROOF READY
+          ===========
+          1. Install/start Docker Desktop.
+          2. Run START_ROOF.bat.
+          3. Open http://localhost:8080
+          4. Roof Store: http://localhost:8787/store/
+
+          New wallet accounts start with 0 Stars and no Premium.
+          Sandbox payment card: 1
+
+          The Teamgram community server is not full Telegram parity: its public edition covers core private chat/basic group/contacts/web features; channels and several newer feature families are not in the community backend.
+          EOF
+
+      - name: Validate package
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test -s roof-ready/roof-images.tar.gz
+          test -f roof-ready/web/index.html
+          test -d roof-ready/teamgramd/deploy/sql
+          test -f roof-ready/docker-compose.yml
+          test -f roof-ready/START_ROOF.bat
+
+      - name: Zip Roof Ready
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd roof-ready
+          zip -r -9 ../Roof-Ready.zip .
+
+      - name: Upload Roof Ready artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Roof-Ready
+          path: Roof-Ready.zip
+          compression-level: 0
+          retention-days: 14
