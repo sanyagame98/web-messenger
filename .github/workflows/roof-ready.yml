@@ -44,11 +44,12 @@ jobs:
           corepack prepare pnpm@8.15.9 --activate
           pnpm --version
           pnpm install --frozen-lockfile
-          pnpm run build
+          pnpm run generate-changelog
+          VITEST=1 pnpm exec vite build
           cd ../..
           rm -rf roof-ready/web
           mkdir -p roof-ready/web
-          cp -a _build/teamgram-tweb/public/. roof-ready/web/
+          cp -a _build/teamgram-tweb/dist/. roof-ready/web/
           python3 - <<'PY'
           from pathlib import Path
           root=Path('roof-ready/web')
@@ -56,7 +57,7 @@ jobs:
               if p.is_file() and p.suffix.lower() in {'.html','.json','.webmanifest','.txt','.xml'}:
                   try: s=p.read_text(encoding='utf-8')
                   except: continue
-                  s=s.replace('Telegram Web K','Roof').replace('Telegram Web','Roof').replace('Teamgram Web','Roof')
+                  s=s.replace('Telegram Web K','Roof').replace('Telegram Web','Roof').replace('Teamgram Web','Roof').replace('<title>Telegram</title>','<title>Roof</title>')
                   p.write_text(s,encoding='utf-8')
           PY
 
