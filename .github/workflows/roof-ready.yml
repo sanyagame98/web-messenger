@@ -41,8 +41,10 @@ jobs:
           set -euxo pipefail
           cd _build/teamgram-tweb
           corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+          pnpm --version
           pnpm install --frozen-lockfile
-          node build.js || pnpm run build
+          pnpm run build
           cd ../..
           rm -rf roof-ready/web
           mkdir -p roof-ready/web
