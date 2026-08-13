@@ -14,6 +14,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.admin_policy import is_admin_email
 from app.database import Base
 
 
@@ -38,12 +39,70 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     messages: Mapped[list[Message]] = relationship(back_populates="sender")
+    entitlement: Mapped[UserEntitlement | None] = relationship(
+        back_populates="user", cascade="all, delete-orphan", uselist=False
+    )
+
+    @property
+    def is_admin(self) -> bool:
+        return is_admin_email(self.email)
+
+    @property
+    def stars(self) -> int:
+        return self.entitlement.stars if self.entitlement else 0
+
+    @property
+    def premium_until(self) -> datetime | None:
+        return self.entitlement.premium_until if self.entitlement else None
+
+    @property
+    def is_premium(self) -> bool:
+        if not self.entitlement or not self.entitlement.premium_until:
+            return False
+        until = self.entitlement.premium_until
+        if until.tzinfo is None:
+            until = until.replace(tzinfo=UTC)
+        return until > utcnow()
+
+    @property
+    def is_verified(self) -> bool:
+        return bool(self.entitlement and self.entitlement.verified)
+
+
+class UserEntitlement(Base):
+    __tablename__ = "user_entitlements"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    stars: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    premium_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
+
+    user: Mapped[User] = relationship(back_populates="entitlement")
+
+
+class AdminGrantLog(Base):
+    __tablename__ = "admin_grant_logs"
+    __table_args__ = (Index("ix_admin_grant_logs_target_created", "target_user_id", "created_at"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    admin_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    target_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    details: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class Chat(Base):
     __tablename__ = "chats"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key_key=True)
     type: Mapped[str] = mapped_column(String(16), nullable=False)  # 'direct' | 'group'
     name: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
