@@ -41,10 +41,15 @@ class UserPublic(BaseModel):
     bio: str
     avatar_url: str | None
     last_seen_at: datetime
+    is_premium: bool = False
+    is_verified: bool = False
 
 
 class UserMe(UserPublic):
     email: EmailStr
+    stars: int = 0
+    premium_until: datetime | None = None
+    is_admin: bool = False
 
 
 class UserUpdate(BaseModel):
