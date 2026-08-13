@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.admin_policy import is_admin_email
 from app.auth import create_access_token, hash_password, verify_password
 from app.database import get_db
 from app.deps import get_current_user
@@ -15,6 +16,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", response_model=TokenResponse)
 def register(payload: UserCreate, db: Session = Depends(get_db)) -> TokenResponse:
+    if is_admin_email(payload.email):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "This Roof account is reserved and can only be created on the server",
+        )
     existing = db.scalar(
         select(User).where(
             or_(User.email == payload.email.lower(), User.username == payload.username)
