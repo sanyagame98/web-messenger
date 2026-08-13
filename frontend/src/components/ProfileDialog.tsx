@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function ProfileDialog({ user, onClose, onUpdated }: Props) {
+  const router = useRouter();
   const [displayName, setDisplayName] = useState(user.display_name);
   const [bio, setBio] = useState(user.bio);
   const [saving, setSaving] = useState(false);
@@ -57,10 +59,31 @@ export function ProfileDialog({ user, onClose, onUpdated }: Props) {
         <div className="mb-4 flex items-center gap-3">
           <Avatar name={user.display_name || user.username} url={user.avatar_url} size={56} />
           <div>
-            <div className="font-medium">@{user.username}</div>
+            <div className="flex items-center gap-1 font-medium">
+              <span>@{user.username}</span>
+              {user.is_verified && <span className="text-sky-500" title="Official">✓</span>}
+              {user.is_premium && <span className="text-purple-500" title="Roof Premium">★</span>}
+            </div>
             <div className="text-sm text-slate-500">{user.email}</div>
+            <div className="mt-1 text-xs text-slate-500">⭐ {user.stars.toLocaleString("ru-RU")} Roof Stars</div>
           </div>
         </div>
+
+        {user.is_admin && (
+          <button
+            onClick={() => {
+              onClose();
+              router.push("/admin");
+            }}
+            className="mb-4 flex w-full items-center gap-3 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-left text-sky-600 transition hover:bg-sky-500/15 dark:text-sky-300"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-500 text-white">🤖</span>
+            <span>
+              <span className="block font-semibold">Roof Admin Bot</span>
+              <span className="block text-xs opacity-75">Пользователи · Roof Stars · Premium · галочки</span>
+            </span>
+          </button>
+        )}
 
         <label className="mb-1 block text-sm font-medium">Display name</label>
         <input
