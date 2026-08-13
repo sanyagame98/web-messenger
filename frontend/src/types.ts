@@ -5,10 +5,15 @@ export interface UserPublic {
   bio: string;
   avatar_url: string | null;
   last_seen_at: string;
+  is_premium: boolean;
+  is_verified: boolean;
 }
 
 export interface UserMe extends UserPublic {
   email: string;
+  stars: number;
+  premium_until: string | null;
+  is_admin: boolean;
 }
 
 export interface TokenResponse {
