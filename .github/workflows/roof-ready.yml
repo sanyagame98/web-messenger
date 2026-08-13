@@ -28,6 +28,51 @@ jobs:
           printf 'data/\n.git/\n' > _build/teamgram-server/.dockerignore
           find _build/teamgram-server -type f -name '*.sh' -exec sed -i 's/\r$//' {} +
 
+      - name: Patch Teamgram Web for local Roof backend
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          dc = Path('_build/teamgram-tweb/src/lib/mtproto/dcConfigurator.ts')
+          text = dc.read_text(encoding='utf-8')
+          old = "  const chosenServer = `wss://web.teamgram.net/${path}`;"
+          new = "  const protocol = location.protocol === 'https:' ? 'wss' : 'ws';\n  const chosenServer = `${protocol}://${location.host}/${path}`;"
+          if old not in text:
+              raise SystemExit('Expected Teamgram WebSocket endpoint was not found')
+          dc.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          env_path = Path('_build/teamgram-tweb/.env')
+          lines = env_path.read_text(encoding='utf-8').splitlines()
+          overrides = {
+              'VITE_MTPROTO_HTTP': '',
+              'VITE_MTPROTO_AUTO': '',
+              'VITE_MTPROTO_HAS_HTTP': '',
+              'VITE_MTPROTO_HAS_WS': '1',
+          }
+          seen = set()
+          out = []
+          for line in lines:
+              if '=' not in line:
+                  out.append(line)
+                  continue
+              key, _ = line.split('=', 1)
+              if key in overrides:
+                  out.append(f'{key}={overrides[key]}')
+                  seen.add(key)
+              else:
+                  out.append(line)
+          for key, value in overrides.items():
+              if key not in seen:
+                  out.append(f'{key}={value}')
+          env_path.write_text('\n'.join(out) + '\n', encoding='utf-8')
+          PY
+          grep -F "\${protocol}://\${location.host}/\${path}" _build/teamgram-tweb/src/lib/mtproto/dcConfigurator.ts
+          ! grep -F 'wss://web.teamgram.net/${path}' _build/teamgram-tweb/src/lib/mtproto/dcConfigurator.ts
+          grep -Fx 'VITE_MTPROTO_HAS_HTTP=' _build/teamgram-tweb/.env
+          grep -Fx 'VITE_MTPROTO_HAS_WS=1' _build/teamgram-tweb/.env
+
       - name: Build Teamgram server image
         shell: bash
         run: |
@@ -80,8 +125,6 @@ jobs:
         run: |
           set -euxo pipefail
           docker save roof-teamgram:ready roof-wallet:ready | gzip -1 > roof-ready/roof-images.tar.gz
-          sed -i 's/roof-teamgram-image.tar.gz/roof-images.tar.gz/g' roof-ready/START_ROOF.bat
-          sed -i 's/docker load -i roof-teamgram-image.tar.gz/docker load -i roof-images.tar.gz/g' roof-ready/START_ROOF.bat
 
       - name: Add ready README
         shell: bash
@@ -108,7 +151,10 @@ jobs:
           test -f roof-ready/web/index.html
           test -d roof-ready/teamgramd/deploy/sql
           test -f roof-ready/docker-compose.yml
+          test -f roof-ready/nginx.conf
           test -f roof-ready/START_ROOF.bat
+          grep -F 'roof-images.tar.gz' roof-ready/START_ROOF.bat
+          ! grep -F 'roof-teamgram-image.tar.gz' roof-ready/START_ROOF.bat
 
       - name: Zip Roof Ready
         shell: bash
