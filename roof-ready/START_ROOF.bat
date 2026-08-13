@@ -14,8 +14,8 @@ docker info >nul 2>nul || (
   exit /b 1
 )
 
-if not exist "roof-teamgram-image.tar.gz" (
-  echo Missing roof-teamgram-image.tar.gz
+if not exist "roof-images.tar.gz" (
+  echo Missing roof-images.tar.gz
   echo Download the complete Roof-Ready artifact from GitHub Actions.
   pause
   exit /b 1
@@ -24,7 +24,7 @@ if not exist "roof-teamgram-image.tar.gz" (
 echo [1/3] Loading prebuilt Roof Teamgram server image...
 docker image inspect roof-teamgram:ready >nul 2>nul
 if errorlevel 1 (
-  docker load -i roof-teamgram-image.tar.gz || goto :fail
+  docker load -i roof-images.tar.gz || goto :fail
 ) else (
   echo Image already loaded.
 )
