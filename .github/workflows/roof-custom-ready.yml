@@ -1,0 +1,83 @@
+name: Build Roof Custom Ready
+
+on:
+  push:
+    branches:
+      - devin/1779123741-mvp
+  workflow_dispatch:
+
+jobs:
+  build-roof-ready:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Roof
+        uses: actions/checkout@v4
+
+      - name: Build custom Roof backend image
+        run: docker build -f deploy/backend.Dockerfile -t roof-backend:ready .
+
+      - name: Build custom Roof frontend image
+        run: docker build -f deploy/frontend.Dockerfile -t roof-frontend:ready .
+
+      - name: Smoke test custom Roof stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'SECRET_KEY=roof-ci-smoke-secret-not-for-production' > roof-ready/.env
+          docker compose -f roof-ready/docker-compose.yml up -d
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/health >/dev/null; then
+              echo 'Roof health check passed'
+              break
+            fi
+            if [ "$i" = "60" ]; then
+              docker compose -f roof-ready/docker-compose.yml ps
+              docker compose -f roof-ready/docker-compose.yml logs --no-color
+              exit 1
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8080/ | grep -qi '<html'
+          docker compose -f roof-ready/docker-compose.yml down -v
+          rm -f roof-ready/.env
+
+      - name: Package prebuilt Roof images
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf roof-ready-dist
+          mkdir roof-ready-dist
+          cp roof-ready/docker-compose.yml roof-ready-dist/
+          cp roof-ready/START_ROOF.bat roof-ready-dist/
+          cp roof-ready/STOP_ROOF.bat roof-ready-dist/
+          cp roof-ready/CREATE_ADMIN.bat roof-ready-dist/
+          cp roof-ready/README.txt roof-ready-dist/
+          printf 'Roof custom build\nCommit: %s\nBuilt: %s UTC\n' "$GITHUB_SHA" "$(date -u '+%Y-%m-%d %H:%M:%S')" > roof-ready-dist/VERSION.txt
+          docker save roof-backend:ready roof-frontend:ready | gzip -1 > roof-ready-dist/roof-images.tar.gz
+
+      - name: Validate ready package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s roof-ready-dist/roof-images.tar.gz
+          test -s roof-ready-dist/docker-compose.yml
+          test -s roof-ready-dist/START_ROOF.bat
+          test -s roof-ready-dist/STOP_ROOF.bat
+          test -s roof-ready-dist/CREATE_ADMIN.bat
+          test -s roof-ready-dist/README.txt
+          grep -q 'roof-backend:ready' roof-ready-dist/docker-compose.yml
+          grep -q 'roof-frontend:ready' roof-ready-dist/docker-compose.yml
+          grep -q 'nadone229@gmail.com' roof-ready-dist/CREATE_ADMIN.bat
+          grep -q 'roof-images.tar.gz' roof-ready-dist/START_ROOF.bat
+          du -h roof-ready-dist/roof-images.tar.gz
+
+      - name: Upload Roof-Ready artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Roof-Ready-Custom
+          path: roof-ready-dist/
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
