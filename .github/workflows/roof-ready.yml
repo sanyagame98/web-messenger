@@ -1,8 +1,8 @@
-name: Build Roof Ready
+name: Build Roof Full Local
 
 on:
   push:
-    branches: [roof-cloud-build]
+    branches: [roof-full-local]
   workflow_dispatch:
 
 jobs:
@@ -12,38 +12,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node 20 for Teamgram Web
+      - name: Use Node 20 for full Roof Web
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Prepare sources
+      - name: Prepare full TWeb-compatible sources
         shell: bash
         run: |
           set -euxo pipefail
           rm -rf _build
           mkdir -p _build
-          git clone --depth 1 https://github.com/teamgram/teamgram-server.git _build/teamgram-server
-          git clone --depth 1 --branch teamgram https://github.com/teamgram/teamgram-tweb.git _build/teamgram-tweb
-          printf 'data/\n.git/\n' > _build/teamgram-server/.dockerignore
-          find _build/teamgram-server -type f -name '*.sh' -exec sed -i 's/\r$//' {} +
+          git clone --depth 1 https://github.com/teamgram/teamgram-server.git _build/roof-server
+          git clone --depth 1 --branch teamgram https://github.com/teamgram/teamgram-tweb.git _build/roof-tweb
+          printf 'data/\n.git/\n' > _build/roof-server/.dockerignore
+          find _build/roof-server -type f -name '*.sh' -exec sed -i 's/\r$//' {} +
 
-      - name: Patch Teamgram Web for local Roof backend
+      - name: Force Roof Web to use only the local server
         shell: bash
         run: |
           set -euxo pipefail
           python3 - <<'PY'
           from pathlib import Path
 
-          dc = Path('_build/teamgram-tweb/src/lib/mtproto/dcConfigurator.ts')
+          dc = Path('_build/roof-tweb/src/lib/mtproto/dcConfigurator.ts')
           text = dc.read_text(encoding='utf-8')
           old = "  const chosenServer = `wss://web.teamgram.net/${path}`;"
           new = "  const protocol = location.protocol === 'https:' ? 'wss' : 'ws';\n  const chosenServer = `${protocol}://${location.host}/${path}`;"
           if old not in text:
-              raise SystemExit('Expected Teamgram WebSocket endpoint was not found')
+              raise SystemExit('Expected remote WebSocket endpoint was not found')
           dc.write_text(text.replace(old, new, 1), encoding='utf-8')
 
-          env_path = Path('_build/teamgram-tweb/.env')
+          env_path = Path('_build/roof-tweb/.env')
           lines = env_path.read_text(encoding='utf-8').splitlines()
           overrides = {
               'VITE_MTPROTO_HTTP': '',
@@ -68,82 +68,94 @@ jobs:
                   out.append(f'{key}={value}')
           env_path.write_text('\n'.join(out) + '\n', encoding='utf-8')
           PY
-          grep -F "\${protocol}://\${location.host}/\${path}" _build/teamgram-tweb/src/lib/mtproto/dcConfigurator.ts
-          ! grep -F 'wss://web.teamgram.net/${path}' _build/teamgram-tweb/src/lib/mtproto/dcConfigurator.ts
-          grep -Fx 'VITE_MTPROTO_HAS_HTTP=' _build/teamgram-tweb/.env
-          grep -Fx 'VITE_MTPROTO_HAS_WS=1' _build/teamgram-tweb/.env
+          grep -F "\${protocol}://\${location.host}/\${path}" _build/roof-tweb/src/lib/mtproto/dcConfigurator.ts
+          ! grep -F 'wss://web.teamgram.net/${path}' _build/roof-tweb/src/lib/mtproto/dcConfigurator.ts
 
-      - name: Build Teamgram server image
+      - name: Build local Roof protocol server image
         shell: bash
         run: |
           set -euxo pipefail
-          docker build -t roof-teamgram:ready _build/teamgram-server
+          docker build -t roof-teamgram:ready _build/roof-server
 
-      - name: Build Roof Wallet image
+      - name: Build local Roof Stars and Premium service
         shell: bash
         run: |
           set -euxo pipefail
           docker build -t roof-wallet:ready roof-ready/wallet
 
-      - name: Build Roof Web
+      - name: Build full Roof Web client
         shell: bash
         run: |
           set -euxo pipefail
-          cd _build/teamgram-tweb
+          cd _build/roof-tweb
           corepack enable
           corepack prepare pnpm@8.15.9 --activate
-          pnpm --version
-          node --version
           pnpm install --frozen-lockfile
           pnpm run generate-changelog
           node build
           cd ../..
           rm -rf roof-ready/web
           mkdir -p roof-ready/web
-          cp -a _build/teamgram-tweb/public/. roof-ready/web/
+          cp -a _build/roof-tweb/public/. roof-ready/web/
           python3 - <<'PY'
           from pathlib import Path
-          root=Path('roof-ready/web')
+          root = Path('roof-ready/web')
+          text_exts = {'.html', '.json', '.webmanifest', '.txt', '.xml', '.js', '.css'}
+          replacements = (
+              ('Telegram Web K', 'Roof'),
+              ('Telegram Web', 'Roof'),
+              ('Teamgram Web', 'Roof'),
+              ('<title>Telegram</title>', '<title>Roof</title>'),
+          )
           for p in root.rglob('*'):
-              if p.is_file() and p.suffix.lower() in {'.html','.json','.webmanifest','.txt','.xml'}:
-                  try: s=p.read_text(encoding='utf-8')
-                  except: continue
-                  s=s.replace('Telegram Web K','Roof').replace('Telegram Web','Roof').replace('Teamgram Web','Roof').replace('<title>Telegram</title>','<title>Roof</title>')
-                  p.write_text(s,encoding='utf-8')
+              if not p.is_file() or p.suffix.lower() not in text_exts:
+                  continue
+              try:
+                  s = p.read_text(encoding='utf-8')
+              except Exception:
+                  continue
+              original = s
+              for old, new in replacements:
+                  s = s.replace(old, new)
+              if s != original:
+                  p.write_text(s, encoding='utf-8')
           PY
 
-      - name: Add Teamgram runtime configs
+      - name: Add local server runtime configs
         shell: bash
         run: |
           set -euxo pipefail
           rm -rf roof-ready/teamgramd
-          cp -a _build/teamgram-server/teamgramd roof-ready/teamgramd
+          cp -a _build/roof-server/teamgramd roof-ready/teamgramd
           rm -rf roof-ready/teamgramd/bin || true
 
-      - name: Save prebuilt Docker images
+      - name: Save prebuilt local Docker images
         shell: bash
         run: |
           set -euxo pipefail
           docker save roof-teamgram:ready roof-wallet:ready | gzip -1 > roof-ready/roof-images.tar.gz
 
-      - name: Add ready README
+      - name: Add local test instructions
         shell: bash
         run: |
           cat > roof-ready/README_READY.txt <<'EOF'
-          ROOF READY
-          ===========
-          1. Install/start Docker Desktop.
+          ROOF FULL LOCAL
+          ===============
+          This package is for LOCAL testing before buying a domain or deploying a server.
+
+          1. Install and start Docker Desktop.
           2. Run START_ROOF.bat.
           3. Open http://localhost:8080
           4. Roof Store: http://localhost:8787/store/
 
-          New wallet accounts start with 0 Stars and no Premium.
-          Sandbox payment card: 1
+          The web client is the full TWeb-style interface and is forced to connect to the local stack.
+          It does not connect to the official Telegram network.
 
-          The Teamgram community server is not full Telegram parity: its public edition covers core private chat/basic group/contacts/web features; channels and several newer feature families are not in the community backend.
+          Current local protocol engine is based on the open-source Teamgram community server.
+          We will extend/replace missing server-side feature families for Roof after local UI testing.
           EOF
 
-      - name: Validate package
+      - name: Validate full local package
         shell: bash
         run: |
           set -euxo pipefail
@@ -154,19 +166,20 @@ jobs:
           test -f roof-ready/nginx.conf
           test -f roof-ready/START_ROOF.bat
           grep -F 'roof-images.tar.gz' roof-ready/START_ROOF.bat
-          ! grep -F 'roof-teamgram-image.tar.gz' roof-ready/START_ROOF.bat
+          ! grep -R -F 'wss://web.teamgram.net' roof-ready/web
+          du -sh roof-ready
 
-      - name: Zip Roof Ready
+      - name: Zip Roof Full Local
         shell: bash
         run: |
           set -euxo pipefail
           cd roof-ready
-          zip -r -9 ../Roof-Ready.zip .
+          zip -r -9 ../Roof-Full-Local.zip .
 
-      - name: Upload Roof Ready artifact
+      - name: Upload Roof Full Local artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Roof-Ready
-          path: Roof-Ready.zip
+          name: Roof-Full-Local
+          path: Roof-Full-Local.zip
           compression-level: 0
           retention-days: 14
