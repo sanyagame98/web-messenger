@@ -9,7 +9,7 @@ import { setStoredUser, setToken } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [login, setLogin] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,66 +19,40 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await api.login({ login: login.trim(), password });
+      const res = await api.login({ email: email.trim(), password });
       setToken(res.access_token);
       setStoredUser(res.user);
       router.replace("/chat");
     } catch (err) {
-      const msg = err instanceof ApiError ? err.detail : "Login failed";
-      setError(msg);
+      setError(err instanceof ApiError ? err.detail : "Не удалось войти");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg dark:bg-slate-900"
-      >
-        <h1 className="mb-1 text-2xl font-bold">Web Messenger</h1>
-        <p className="mb-6 text-sm text-slate-500">Sign in to your account.</p>
+    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-slate-100">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-2xl">
+        <div className="mb-7 text-center">
+          <div className="mb-2 text-3xl font-black tracking-tight">ROOF</div>
+          <p className="text-sm text-slate-400">Вход в аккаунт</p>
+        </div>
 
-        <label className="mb-1 block text-sm font-medium">Email or username</label>
-        <input
-          className="mb-3 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-500 dark:border-slate-700 dark:bg-slate-800"
-          value={login}
-          onChange={(e) => setLogin(e.target.value)}
-          autoComplete="username"
-          required
-        />
+        <label className="mb-1 block text-sm font-medium">Почта</label>
+        <input type="email" className="mb-4 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 outline-none focus:border-brand-500" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
 
-        <label className="mb-1 block text-sm font-medium">Password</label>
-        <input
-          type="password"
-          className="mb-4 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-500 dark:border-slate-700 dark:bg-slate-800"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-          required
-        />
+        <label className="mb-1 block text-sm font-medium">Пароль</label>
+        <input type="password" className="mb-4 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 outline-none focus:border-brand-500" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
 
-        {error && (
-          <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
-            {error}
-          </div>
-        )}
+        <p className="mb-4 text-xs text-slate-500">Вход напрямую по почте и паролю. Никаких сообщений с кодами.</p>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="mb-3 w-full rounded-lg bg-brand-500 px-3 py-2 font-medium text-white transition hover:bg-brand-600 disabled:opacity-60"
-        >
-          {loading ? "Signing in…" : "Sign in"}
+        {error && <div className="mb-4 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</div>}
+
+        <button type="submit" disabled={loading} className="mb-4 w-full rounded-xl bg-brand-500 px-3 py-3 font-semibold text-white transition hover:bg-brand-600 disabled:opacity-60">
+          {loading ? "Входим…" : "Войти"}
         </button>
 
-        <p className="text-center text-sm text-slate-500">
-          No account?{" "}
-          <Link href="/register" className="text-brand-500 hover:underline">
-            Create one
-          </Link>
-        </p>
+        <p className="text-center text-sm text-slate-400">Нет аккаунта? <Link href="/register" className="text-brand-400 hover:underline">Регистрация</Link></p>
       </form>
     </main>
   );

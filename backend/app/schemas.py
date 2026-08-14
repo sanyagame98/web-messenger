@@ -5,30 +5,23 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{5,32}$")
+USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{4,32}$")
 
 
 def _validate_username(value: str) -> str:
     value = value.strip()
     if not USERNAME_RE.fullmatch(value):
-        raise ValueError("Username must be 5-32 characters, only letters, digits and underscores")
+        raise ValueError("Username must be 4-32 characters, only letters, digits and underscores")
     return value.lower()
 
 
 class UserCreate(BaseModel):
     email: EmailStr
-    username: str
     password: str = Field(min_length=6, max_length=128)
-    display_name: str | None = Field(default=None, max_length=64)
-
-    @field_validator("username")
-    @classmethod
-    def validate_username(cls, v: str) -> str:
-        return _validate_username(v)
 
 
 class UserLogin(BaseModel):
-    login: str
+    email: EmailStr
     password: str
 
 
@@ -53,8 +46,14 @@ class UserMe(UserPublic):
 
 
 class UserUpdate(BaseModel):
+    username: str | None = None
     display_name: str | None = Field(default=None, max_length=64)
     bio: str | None = Field(default=None, max_length=280)
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, v: str | None) -> str | None:
+        return _validate_username(v) if v is not None else None
 
 
 class TokenResponse(BaseModel):

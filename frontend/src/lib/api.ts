@@ -7,11 +7,11 @@ import type {
   UserPublic,
 } from "@/types";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || "";
 
 export function apiUrl(path: string): string {
-  return `${API_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${API_URL}${normalized}`;
 }
 
 export function assetUrl(path: string | null | undefined): string | null {
@@ -21,7 +21,7 @@ export function assetUrl(path: string | null | undefined): string | null {
 }
 
 export function wsUrl(token: string): string {
-  const u = new URL(apiUrl("/ws"));
+  const u = new URL(apiUrl("/ws"), window.location.origin);
   u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
   u.searchParams.set("token", token);
   return u.toString();
@@ -55,7 +55,9 @@ async function request<T>(
     let detail = res.statusText;
     try {
       const data = await res.json();
-      if (data?.detail) detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+      if (data?.detail) {
+        detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+      }
     } catch {
       // ignore
     }
@@ -68,19 +70,14 @@ async function request<T>(
 }
 
 export const api = {
-  register(payload: {
-    email: string;
-    username: string;
-    password: string;
-    display_name?: string;
-  }) {
+  register(payload: { email: string; password: string }) {
     return request<TokenResponse>(
       "/api/auth/register",
       { method: "POST", body: JSON.stringify(payload) },
       { auth: false },
     );
   },
-  login(payload: { login: string; password: string }) {
+  login(payload: { email: string; password: string }) {
     return request<TokenResponse>(
       "/api/auth/login",
       { method: "POST", body: JSON.stringify(payload) },
@@ -90,7 +87,7 @@ export const api = {
   me() {
     return request<UserMe>("/api/auth/me");
   },
-  updateMe(payload: { display_name?: string; bio?: string }) {
+  updateMe(payload: { username?: string; display_name?: string; bio?: string }) {
     return request<UserMe>("/api/auth/me", {
       method: "PATCH",
       body: JSON.stringify(payload),
