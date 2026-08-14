@@ -5,6 +5,10 @@ on:
     branches: [roof-own-tweb]
   workflow_dispatch:
 
+concurrency:
+  group: roof-own-tweb-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
     runs-on: ubuntu-24.04
@@ -26,7 +30,7 @@ jobs:
           node-version: '20'
       - name: Fetch pinned TWeb UI source
         run: |
-          git clone https://github.com/morethanwords/tweb.git _build/tweb
+          git clone --filter=blob:none https://github.com/morethanwords/tweb.git _build/tweb
           cd _build/tweb
           git checkout e3730e10073c3fc02e1360e3513b70b176d6afec
       - name: Apply Roof-only transport and email auth
