@@ -80,6 +80,7 @@ class RoofTransport {
   private rememberAuth(result: {access_token: string; user: unknown}) {
     const user = result.user as {id?: number} | undefined;
     this.setToken(result.access_token, user?.id);
+    this.connectUpdates();
     return result;
   }
 
@@ -162,7 +163,7 @@ class RoofTransport {
           stickers_faved_limit_default: 5,
           stickers_faved_limit_premium: 10,
           reactions_user_max_default: 1,
-          reactions_user_max_premium: 3,
+          reactions_user_max_premium: 1,
           about_length_limit_default: 280,
           about_length_limit_premium: 280,
           topics_pinned_limit: 5,
@@ -200,7 +201,7 @@ class RoofTransport {
     }
 
     if(method === 'contacts.getStatuses') return [];
-    if(method === 'messages.getTopPeers') {
+    if(method === 'contacts.getTopPeers') {
       return {_: 'contacts.topPeers', categories: [], chats: [], users: []};
     }
     if(method === 'messages.getSavedDialogs') {
@@ -243,6 +244,35 @@ class RoofTransport {
     this.updateListeners.forEach((listener) => listener(update));
   }
 
+  private peerForSocket(data: any, message: any): any {
+    const me = this.getUserId();
+    const memberIds = Array.isArray(data.member_user_ids) ? data.member_user_ids.map(Number) : [];
+    if(data.chat_type === 'direct') {
+      const other = memberIds.find((id: number) => id !== me) || Number(message.sender_id || 0);
+      return {_: 'peerUser', user_id: other};
+    }
+    if(data.chat_type === 'channel') {
+      return {_: 'peerChannel', channel_id: Number(data.chat_id)};
+    }
+    return {_: 'peerChat', chat_id: Number(data.chat_id)};
+  }
+
+  private socketMessage(data: any): any {
+    const message = data.message || {};
+    const me = this.getUserId();
+    const item: any = {
+      _: 'message',
+      id: Number(message.id),
+      peer_id: this.peerForSocket(data, message),
+      date: Math.floor(new Date(message.created_at || Date.now()).getTime() / 1000),
+      message: String(message.content || ''),
+      pFlags: Number(message.sender_id) === me ? {out: true} : {}
+    };
+    if(message.sender_id) item.from_id = {_: 'peerUser', user_id: Number(message.sender_id)};
+    if(message.edited) item.edit_date = Math.floor(Date.now() / 1000);
+    return item;
+  }
+
   private normalizeSocketUpdate(data: any): unknown | undefined {
     if(!data) return;
     if(data.roof_update) return data.roof_update;
@@ -258,6 +288,14 @@ class RoofTransport {
     }
 
     if(data.type === 'typing') {
+      if(data.chat_type && data.chat_type !== 'direct') {
+        return {
+          _: 'updateChatUserTyping',
+          chat_id: Number(data.chat_id),
+          from_id: {_: 'peerUser', user_id: Number(data.user_id)},
+          action: {_: 'sendMessageTypingAction'}
+        };
+      }
       return {
         _: 'updateUserTyping',
         user_id: Number(data.user_id),
@@ -266,26 +304,23 @@ class RoofTransport {
     }
 
     if(data.type === 'roof_message') {
-      const message = data.message || {};
-      const me = this.getUserId();
-      const memberIds = Array.isArray(data.member_user_ids) ? data.member_user_ids.map(Number) : [];
-      let peer: any;
-      if(data.chat_type === 'direct') {
-        const other = memberIds.find((id: number) => id !== me) || Number(message.sender_id || 0);
-        peer = {_: 'peerUser', user_id: other};
-      } else {
-        peer = {_: 'peerChat', chat_id: Number(data.chat_id)};
-      }
-      const item: any = {
-        _: 'message',
-        id: Number(message.id),
-        peer_id: peer,
-        date: Math.floor(new Date(message.created_at || Date.now()).getTime() / 1000),
-        message: String(message.content || ''),
-        pFlags: Number(message.sender_id) === me ? {out: true} : {}
+      const item = this.socketMessage(data);
+      return {_: 'updateNewMessage', message: item, pts: Number(item.id), pts_count: 1};
+    }
+
+    if(data.type === 'roof_message_edit') {
+      const item = this.socketMessage(data);
+      return {_: 'updateEditMessage', message: item, pts: Number(item.id), pts_count: 1};
+    }
+
+    if(data.type === 'roof_messages_deleted') {
+      const ids = Array.isArray(data.message_ids) ? data.message_ids.map(Number) : [];
+      return {
+        _: 'updateDeleteMessages',
+        messages: ids,
+        pts: Math.max(0, ...ids),
+        pts_count: ids.length
       };
-      if(message.sender_id) item.from_id = {_: 'peerUser', user_id: Number(message.sender_id)};
-      return {_: 'updateNewMessage', message: item, pts: Number(message.id), pts_count: 1};
     }
 
     return;
@@ -305,7 +340,17 @@ class RoofTransport {
     this.updateSocket = socket;
     socket.onmessage = (event) => {
       try {
-        const update = this.normalizeSocketUpdate(JSON.parse(event.data));
+        const data = JSON.parse(event.data);
+        if(data?.type === 'presence_snapshot') {
+          const ids = Array.isArray(data.online_user_ids) ? data.online_user_ids.map(Number) : [];
+          ids.forEach((userId: number) => this.emit({
+            _: 'updateUserStatus',
+            user_id: userId,
+            status: {_: 'userStatusOnline', expires: Math.floor(Date.now() / 1000) + 60}
+          }));
+          return;
+        }
+        const update = this.normalizeSocketUpdate(data);
         if(update) this.emit(update);
       } catch {}
     };
