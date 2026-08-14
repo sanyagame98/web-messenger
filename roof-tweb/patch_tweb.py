@@ -132,7 +132,7 @@ def disable_mtproto_network() -> None:
 
 
 def strip_entry_branding() -> None:
-    # The production title/description come from vite.config.ts handlebars context.
+    # Production metadata is injected from this handlebars context.
     vite_path = ROOT / "vite.config.ts"
     vite = vite_path.read_text(encoding="utf-8")
     vite = vite.replace("title: 'Telegram Web'", "title: 'Roof'")
@@ -140,8 +140,9 @@ def strip_entry_branding() -> None:
         "description: 'Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.'",
         "description: 'Roof is a private messaging app powered entirely by Roof infrastructure.'",
     )
-    vite = vite.replace("url: 'https://web.telegram.org/k/'", "url: '/'" )
-    vite = vite.replace("origin: 'https://web.telegram.org/'", "origin: '/'" )
+    # Keep absolute URLs so Vite does not interpret '/' as a directory asset.
+    vite = vite.replace("url: 'https://web.telegram.org/k/'", "url: 'https://roof.local/'")
+    vite = vite.replace("origin: 'https://web.telegram.org/'", "origin: 'https://roof.local/'")
     vite_path.write_text(vite, encoding="utf-8")
 
     for relative in (
