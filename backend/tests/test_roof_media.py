@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# ruff: noqa: I001
+
 import base64
 
 from fastapi.testclient import TestClient
