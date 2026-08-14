@@ -12,7 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    app_name: str = "Web Messenger"
+    app_name: str = "Roof"
     secret_key: str = "change-me-in-production"
     access_token_expire_minutes: int = 60 * 24 * 30  # 30 days
 
