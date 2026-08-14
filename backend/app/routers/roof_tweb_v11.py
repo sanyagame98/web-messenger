@@ -11,7 +11,6 @@ from app.deps import get_current_user
 from app.models import Chat, ChatMember, User
 from app.routers import roof_tweb as legacy
 from app.routers import roof_tweb_v3 as v3
-from app.routers import roof_tweb_v8 as v8
 from app.routers import roof_tweb_v10 as v10
 from app.websocket import manager
 
@@ -223,13 +222,20 @@ async def _edit_channel_admin(
     target = _member(chat, user_id)
     if target is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Roof subscriber not found")
+
+    previous = _channel_participant(chat, target)
     if target.role != "owner":
         rights = params.get("admin_rights") or {}
         flags = rights.get("pFlags") if isinstance(rights, dict) else {}
         enabled = bool(flags) if isinstance(flags, dict) else bool(rights)
         target.role = "admin" if enabled else "member"
         db.commit()
+
     fresh = _load_chat(chat.id, current_user, db)
+    fresh_target = _member(fresh, user_id)
+    if fresh_target is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Roof subscriber not found")
+    current = _channel_participant(fresh, fresh_target)
     await manager.broadcast_chat(
         fresh.id,
         {
@@ -238,8 +244,8 @@ async def _edit_channel_admin(
                 "channel_id": fresh.id,
                 "date": legacy._unix(None),
                 "user_id": user_id,
-                "prev_participant": _channel_participant(fresh, target),
-                "new_participant": _channel_participant(fresh, _member(fresh, user_id)),
+                "prev_participant": previous,
+                "new_participant": current,
                 "inviter_id": current_user.id,
             }
         },
@@ -349,14 +355,26 @@ async def invoke_v11(
         return _full_group(chat, current_user)
     if method == "messages.addChatUser":
         chat = _load_chat(int(params.get("chat_id", 0) or 0), current_user, db)
-        _add_member(chat, _resolve_user_id(params.get("user_id"), current_user), current_user, db)
+        _add_member(
+            chat,
+            _resolve_user_id(params.get("user_id"), current_user),
+            current_user,
+            db,
+        )
         return _updates(_load_chat(chat.id, current_user, db), current_user)
     if method == "messages.deleteChatUser":
         chat = _load_chat(int(params.get("chat_id", 0) or 0), current_user, db)
         target_id = _resolve_user_id(params.get("user_id"), current_user)
         _remove_member(chat, target_id, current_user, db)
         if target_id == current_user.id:
-            return {"_": "updates", "updates": [], "users": [], "chats": [], "date": legacy._unix(None), "seq": 0}
+            return {
+                "_": "updates",
+                "updates": [],
+                "users": [],
+                "chats": [],
+                "date": legacy._unix(None),
+                "seq": 0,
+            }
         return _updates(_load_chat(chat.id, current_user, db), current_user)
     if method == "messages.editChatAdmin":
         return _edit_group_admin(params, current_user, db)
