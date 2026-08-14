@@ -40,3 +40,25 @@ class MessageMedia(Base):
     )
     kind: Mapped[str] = mapped_column(String(24), nullable=False, default="document")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ProfilePhoto(Base):
+    """Current Roof avatar for a user or a group/channel.
+
+    Keeping this in a separate table lets existing local SQLite databases gain
+    avatar support through create_all without requiring destructive column migrations.
+    """
+
+    __tablename__ = "profile_photos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True, unique=True, index=True
+    )
+    chat_id: Mapped[int | None] = mapped_column(
+        ForeignKey("chats.id", ondelete="CASCADE"), nullable=True, unique=True, index=True
+    )
+    stored_file_id: Mapped[int] = mapped_column(
+        ForeignKey("stored_files.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
