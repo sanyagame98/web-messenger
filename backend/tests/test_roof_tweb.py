@@ -83,3 +83,78 @@ def test_roof_tweb_email_chat_flow() -> None:
             {"id": {"_": "inputUserSelf"}},
         )
         assert me["users"][0]["id"] == alice["id"]
+
+
+def test_roof_tweb_profile_group_and_startup_api() -> None:
+    with TestClient(app) as client:
+        owner_token, owner = _register(client, "owner.group@example.com")
+        member_token, member = _register(client, "member.group@example.com")
+
+        config = _invoke(client, owner_token, "help.getConfig")
+        assert config["_"] == "config"
+        assert config["dc_options"] == []
+        app_config = _invoke(client, owner_token, "help.getAppConfig")
+        assert app_config["config"]["reactions_user_max_default"] == 1
+
+        profile = _invoke(
+            client,
+            owner_token,
+            "account.updateProfile",
+            {"first_name": "Roof", "last_name": "Owner", "about": "My Roof profile"},
+        )
+        assert profile["first_name"] == "Roof Owner"
+
+        assert _invoke(
+            client,
+            owner_token,
+            "account.checkUsername",
+            {"username": "roof_group_owner"},
+        ) is True
+        renamed = _invoke(
+            client,
+            owner_token,
+            "account.updateUsername",
+            {"username": "roof_group_owner"},
+        )
+        assert renamed["username"] == "roof_group_owner"
+
+        created = _invoke(
+            client,
+            owner_token,
+            "messages.createChat",
+            {
+                "title": "Roof Test Group",
+                "users": [
+                    {"_": "inputUser", "user_id": member["id"], "access_hash": "0"}
+                ],
+            },
+        )
+        assert created["chats"][0]["title"] == "Roof Test Group"
+        chat_id = created["chats"][0]["id"]
+
+        full = _invoke(client, owner_token, "messages.getFullChat", {"chat_id": chat_id})
+        assert len(full["full_chat"]["participants"]["participants"]) == 2
+
+        sent = _invoke(
+            client,
+            owner_token,
+            "messages.sendMessage",
+            {
+                "peer": {"_": "inputPeerChat", "chat_id": chat_id},
+                "message": "hello group",
+                "random_id": "2",
+            },
+        )
+        assert sent["updates"][0]["message"]["message"] == "hello group"
+
+        member_dialogs = _invoke(client, member_token, "messages.getDialogs", {"limit": 20})
+        assert any(chat["id"] == chat_id for chat in member_dialogs["chats"])
+
+        edited = _invoke(
+            client,
+            owner_token,
+            "messages.editChatTitle",
+            {"chat_id": chat_id, "title": "Roof Renamed Group"},
+        )
+        assert edited["chats"][0]["title"] == "Roof Renamed Group"
+        assert owner["id"] != member["id"]
