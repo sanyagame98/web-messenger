@@ -5,6 +5,7 @@ type RoofCancellablePromise<T> = Promise<T> & {cancel: () => void};
 
 const TOKEN_KEY = 'roof_access_token';
 const USER_ID_KEY = 'roof_user_id';
+const ROOF_BYTES_KEY = '__roof_bytes_base64';
 
 function getApiBase(): string {
   const configured = (globalThis as typeof globalThis & {ROOF_API_BASE?: string}).ROOF_API_BASE;
@@ -17,6 +18,61 @@ function getWsBase(): string {
   url.pathname = '/ws';
   url.search = '';
   return url.toString();
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for(let offset = 0; offset < bytes.length; offset += chunkSize) {
+    const chunk = bytes.subarray(offset, offset + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return globalThis.btoa(binary);
+}
+
+function base64ToBytes(encoded: string): Uint8Array {
+  const binary = globalThis.atob(encoded);
+  const bytes = new Uint8Array(binary.length);
+  for(let i = 0; i < binary.length; ++i) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function encodeRoofValue(value: unknown): unknown {
+  if(value instanceof ArrayBuffer) {
+    return {[ROOF_BYTES_KEY]: bytesToBase64(new Uint8Array(value))};
+  }
+  if(ArrayBuffer.isView(value)) {
+    const view = value as ArrayBufferView;
+    return {
+      [ROOF_BYTES_KEY]: bytesToBase64(
+        new Uint8Array(view.buffer, view.byteOffset, view.byteLength)
+      )
+    };
+  }
+  if(Array.isArray(value)) return value.map((item) => encodeRoofValue(item));
+  if(value && typeof value === 'object') {
+    const encoded: Record<string, unknown> = {};
+    Object.entries(value as Record<string, unknown>).forEach(([key, item]) => {
+      encoded[key] = encodeRoofValue(item);
+    });
+    return encoded;
+  }
+  return value;
+}
+
+function decodeRoofValue(value: unknown): any {
+  if(Array.isArray(value)) return value.map((item) => decodeRoofValue(item));
+  if(value && typeof value === 'object') {
+    const object = value as Record<string, unknown>;
+    const encoded = object[ROOF_BYTES_KEY];
+    if(typeof encoded === 'string') return base64ToBytes(encoded);
+    const decoded: Record<string, unknown> = {};
+    Object.entries(object).forEach(([key, item]) => {
+      decoded[key] = decodeRoofValue(item);
+    });
+    return decoded;
+  }
+  return value;
 }
 
 function cancellableResolved<T>(value: T): RoofCancellablePromise<T> {
@@ -74,7 +130,8 @@ class RoofTransport {
       error.type = detail.startsWith('ROOF_') ? detail : `ROOF_HTTP_${response.status}`;
       throw error;
     }
-    return response.json() as Promise<T>;
+    const data = await response.json();
+    return decodeRoofValue(data) as T;
   }
 
   private rememberAuth(result: {access_token: string; user: unknown}) {
@@ -228,7 +285,10 @@ class RoofTransport {
     const controller = new AbortController();
     const promise = this.request<T>(
       '/roof/invoke',
-      {method: 'POST', body: JSON.stringify({method, params})},
+      {
+        method: 'POST',
+        body: JSON.stringify({method, params: encodeRoofValue(params)})
+      },
       controller.signal
     ) as RoofCancellablePromise<T>;
     promise.cancel = () => controller.abort();
@@ -270,12 +330,13 @@ class RoofTransport {
     };
     if(message.sender_id) item.from_id = {_: 'peerUser', user_id: Number(message.sender_id)};
     if(message.edited) item.edit_date = Math.floor(Date.now() / 1000);
+    if(message.media) item.media = decodeRoofValue(message.media);
     return item;
   }
 
   private normalizeSocketUpdate(data: any): unknown | undefined {
     if(!data) return;
-    if(data.roof_update) return data.roof_update;
+    if(data.roof_update) return decodeRoofValue(data.roof_update);
 
     if(data.type === 'presence') {
       return {
