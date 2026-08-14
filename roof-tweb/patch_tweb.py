@@ -27,8 +27,8 @@ def replace_method(text: str, signature: str, replacement: str) -> str:
     if start < 0:
         fail(f"method not found: {signature.strip()}")
 
-    # Method signatures can contain default object literals (`= {}`), so the
-    # first `{` after the method name is not necessarily the body opener.
+    # Signatures can contain default object literals (`= {}`), so find the
+    # body opener by looking for a brace followed by a line break.
     brace = text.find(" {\n", start)
     if brace < 0:
         brace = text.find(" {\r\n", start)
@@ -115,7 +115,7 @@ def disable_mtproto_network() -> None:
     choose_replacement = """  public chooseServer(\n    _dcId: DcId,\n    _connectionType: ConnectionType = 'client',\n    _transportType: TransportType = Modes.transport,\n    _reuse = true,\n    _premium?: boolean\n  ) {\n    throw new Error('ROOF_MTPROTO_DISABLED');\n  }"""
     text = replace_method(text, "  public chooseServer(", choose_replacement)
 
-    # Remove hard-coded Telegram network data even though the transport is disabled.
+    # Remove inherited DC tables and any endpoint/IP literals left in comments.
     text = re.sub(
         r"  private sslSubdomains = \[[^\n]+\];\n\n  private dcOptions = Modes\.test \?.*?\n    \];\n\n",
         "",
@@ -123,6 +123,8 @@ def disable_mtproto_network() -> None:
         count=1,
         flags=re.DOTALL,
     )
+    text = text.replace("web.telegram.org", "roof-network-disabled.invalid")
+    text = re.sub(r"149\.154\.(?:167|171|175)\.\d+", "0.0.0.0", text)
     path.write_text(text, encoding="utf-8")
 
 
