@@ -91,8 +91,14 @@ def test_roof_group_admin_permissions() -> None:
         )
         assert cannot_remove_owner.status_code == 403
 
-        full = _invoke(client, outsider_token, "messages.getFullChat", {"chat_id": chat_id})
-        kinds = {item["user_id"]: item["_"] for item in full["full_chat"]["participants"]["participants"]}
+        full = _invoke(
+            client,
+            outsider_token,
+            "messages.getFullChat",
+            {"chat_id": chat_id},
+        )
+        participants = full["full_chat"]["participants"]["participants"]
+        kinds = {item["user_id"]: item["_"] for item in participants}
         assert kinds[owner["id"]] == "chatParticipantCreator"
         assert kinds[member["id"]] == "chatParticipantAdmin"
 
