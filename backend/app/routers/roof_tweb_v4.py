@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.deps import get_current_user
-from app.models import ChatMember, Message, User
+from app.models import Chat, Message, User
 from app.reaction_models import MessageReaction
 from app.routers import roof_tweb as legacy
 from app.routers import roof_tweb_v3 as v3
@@ -39,6 +39,12 @@ def _tl_reaction(key: str) -> dict[str, Any]:
     if key.startswith("custom:"):
         return {"_": "reactionCustomEmoji", "document_id": key.removeprefix("custom:")}
     return {"_": "reactionEmoji", "emoticon": key.removeprefix("emoji:")}
+
+
+def _peer_for_chat(chat: Chat, current_user_id: int) -> dict[str, Any]:
+    if chat.type == "channel":
+        return {"_": "peerChannel", "channel_id": chat.id}
+    return legacy._peer_for_chat(chat, current_user_id)
 
 
 def _summary(message_id: int, current_user_id: int, db: Session) -> dict[str, Any] | None:
@@ -99,13 +105,13 @@ def _load_message_for_peer(
     params: dict[str, Any],
     current_user: User,
     db: Session,
-) -> tuple[Message, int]:
+) -> tuple[Message, Chat]:
     chat = legacy._resolve_peer(params.get("peer"), current_user, db)
     message_id = int(params.get("msg_id") or params.get("id") or 0)
     message = db.get(Message, message_id)
     if message is None or message.chat_id != chat.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Roof message not found")
-    return message, chat.id
+    return message, chat
 
 
 async def _send_reaction(
@@ -113,7 +119,7 @@ async def _send_reaction(
     current_user: User,
     db: Session,
 ) -> dict[str, Any]:
-    message, chat_id = _load_message_for_peer(params, current_user, db)
+    message, chat = _load_message_for_peer(params, current_user, db)
     key = _reaction_key(params.get("reaction"))
     row = db.scalar(
         select(MessageReaction).where(
@@ -137,19 +143,23 @@ async def _send_reaction(
     db.commit()
 
     reactions = _summary(message.id, current_user.id, db)
+    peer = _peer_for_chat(chat, current_user.id)
     update = {
         "_": "updateMessageReactions",
-        "peer": legacy._peer_for_chat(message.chat, current_user.id),
+        "peer": peer,
         "msg_id": message.id,
         "top_msg_id": 0,
         "reactions": reactions,
     }
     await manager.broadcast_chat(
-        chat_id,
+        chat.id,
         {
             "type": "roof_reaction",
-            "chat_id": chat_id,
+            "chat_id": chat.id,
+            "chat_type": chat.type,
+            "member_user_ids": [member.user_id for member in chat.members],
             "message_id": message.id,
+            "reaction_user_id": current_user.id,
             "reactions": reactions,
         },
     )
@@ -215,7 +225,7 @@ def _reactions_updates(
         updates.append(
             {
                 "_": "updateMessageReactions",
-                "peer": legacy._peer_for_chat(chat, current_user.id),
+                "peer": _peer_for_chat(chat, current_user.id),
                 "msg_id": message.id,
                 "top_msg_id": 0,
                 "reactions": reactions,
