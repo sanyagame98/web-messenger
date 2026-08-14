@@ -132,7 +132,24 @@ def disable_mtproto_network() -> None:
 
 
 def strip_entry_branding() -> None:
-    for relative in ("public/index.html", "public/manifest.json", "public/site.webmanifest"):
+    # The production title/description come from vite.config.ts handlebars context.
+    vite_path = ROOT / "vite.config.ts"
+    vite = vite_path.read_text(encoding="utf-8")
+    vite = vite.replace("title: 'Telegram Web'", "title: 'Roof'")
+    vite = vite.replace(
+        "description: 'Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.'",
+        "description: 'Roof is a private messaging app powered entirely by Roof infrastructure.'",
+    )
+    vite = vite.replace("url: 'https://web.telegram.org/k/'", "url: '/'" )
+    vite = vite.replace("origin: 'https://web.telegram.org/'", "origin: '/'" )
+    vite_path.write_text(vite, encoding="utf-8")
+
+    for relative in (
+        "index.html",
+        "public/index.html",
+        "public/manifest.json",
+        "public/site.webmanifest",
+    ):
         path = ROOT / relative
         if not path.exists():
             continue
@@ -146,12 +163,15 @@ def strip_entry_branding() -> None:
 def verify() -> None:
     api = (ROOT / "src/lib/appManagers/apiManager.ts").read_text(encoding="utf-8")
     dc = (ROOT / "src/lib/mtproto/dcConfigurator.ts").read_text(encoding="utf-8")
+    vite = (ROOT / "vite.config.ts").read_text(encoding="utf-8")
     if "cachedNetworker.wrapApiCall(method, params, options)" in api:
         fail("MTProto invoke fallback remains")
     if "roofTransport.invoke" not in api:
         fail("Roof transport is not active")
     if "web.telegram.org" in dc:
         fail("Telegram Web endpoint remains")
+    if "title: 'Roof'" not in vite:
+        fail("Roof build title is not configured")
     for prefix in ("149.154.175.", "149.154.167.", "149.154.171."):
         if prefix in dc:
             fail(f"Telegram DC address remains: {prefix}")
