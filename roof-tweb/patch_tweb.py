@@ -26,21 +26,42 @@ def replace_method(text: str, signature: str, replacement: str) -> str:
     start = text.find(signature)
     if start < 0:
         fail(f"method not found: {signature.strip()}")
-    brace = text.find("{", start)
+
+    # Method signatures can contain default object literals (`= {}`), so the
+    # first `{` after the method name is not necessarily the body opener.
+    brace = text.find(" {\n", start)
     if brace < 0:
-        fail("opening brace not found")
+        brace = text.find(" {\r\n", start)
+    if brace < 0:
+        fail("opening method brace not found")
+    brace += 1
+
     depth = 0
     end = None
+    quote: str | None = None
+    escaped = False
     for index in range(brace, len(text)):
-        if text[index] == "{":
+        char = text[index]
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in {"'", '"', "`"}:
+            quote = char
+            continue
+        if char == "{":
             depth += 1
-        elif text[index] == "}":
+        elif char == "}":
             depth -= 1
             if depth == 0:
                 end = index + 1
                 break
     if end is None:
-        fail("closing brace not found")
+        fail("closing method brace not found")
     return text[:start] + replacement + text[end:]
 
 
@@ -93,6 +114,15 @@ def disable_mtproto_network() -> None:
 
     choose_replacement = """  public chooseServer(\n    _dcId: DcId,\n    _connectionType: ConnectionType = 'client',\n    _transportType: TransportType = Modes.transport,\n    _reuse = true,\n    _premium?: boolean\n  ) {\n    throw new Error('ROOF_MTPROTO_DISABLED');\n  }"""
     text = replace_method(text, "  public chooseServer(", choose_replacement)
+
+    # Remove hard-coded Telegram network data even though the transport is disabled.
+    text = re.sub(
+        r"  private sslSubdomains = \[[^\n]+\];\n\n  private dcOptions = Modes\.test \?.*?\n    \];\n\n",
+        "",
+        text,
+        count=1,
+        flags=re.DOTALL,
+    )
     path.write_text(text, encoding="utf-8")
 
 
