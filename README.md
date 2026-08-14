@@ -1,53 +1,11 @@
-# Web Messenger
+# Roof
 
-Telegram-like web messenger MVP.
+Roof is a self-hosted messenger project using the open-source TWeb client as a UI/client-behavior base while replacing Telegram/MTProto networking with Roof's own API, WebSocket transport, authentication, database, messaging, entitlements, bots, groups/channels, and media services.
 
-- **Frontend**: Next.js 14 (App Router) + TypeScript + Tailwind CSS
-- **Backend**: FastAPI + SQLAlchemy + SQLite (PostgreSQL-ready)
-- **Realtime**: WebSocket (messages, typing, presence)
-- **Auth**: JWT, email + username (5–32 chars) + password
+Current development branch: `roof-own-tweb`.
 
-## Project structure
+## Architecture rule
 
-```
-backend/   FastAPI app (REST + WebSocket)
-frontend/  Next.js app (App Router)
-```
+The Roof runtime must not connect to Telegram or Teamgram servers. Unsupported TWeb API methods fail with `ROOF_METHOD_NOT_IMPLEMENTED` until implemented on the Roof backend; there is no fallback to Telegram/Teamgram.
 
-## Quickstart
-
-### Backend
-
-```bash
-cd backend
-uv sync
-uv run uvicorn app.main:app --reload --port 8000
-```
-
-Default DB is SQLite at `backend/data/app.db`. Override with `DATABASE_URL`.
-
-API docs: <http://localhost:8000/docs>
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Set `NEXT_PUBLIC_API_URL` to the backend URL (default `http://localhost:8000`).
-
-App: <http://localhost:3000>
-
-## Features (MVP)
-
-- Registration/login by email + username + password
-- Profiles with avatar and bio
-- User search by username
-- 1-to-1 and group chats
-- Text and image messages
-- Typing indicators
-- Online/offline presence
-- Read state per chat
-- Realtime updates via WebSocket
+The TWeb-derived client is GPL-3.0 and must remain license-compliant when distributed. The Roof backend is maintained as a separate service.
