@@ -18,7 +18,9 @@ jobs:
       - working-directory: backend
         run: uv sync --extra dev
       - working-directory: backend
-        run: uv run ruff check app create_admin.py
+        run: uv run ruff check app create_admin.py tests
+      - working-directory: backend
+        run: uv run pytest -q tests/test_roof_tweb.py
 
   tweb:
     runs-on: ubuntu-24.04
