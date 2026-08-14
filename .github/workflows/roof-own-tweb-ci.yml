@@ -1,0 +1,56 @@
+name: Roof Own TWeb CI
+
+on:
+  push:
+    branches: [roof-own-tweb]
+  workflow_dispatch:
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - working-directory: backend
+        run: uv sync --extra dev
+      - working-directory: backend
+        run: uv run ruff check app create_admin.py
+
+  tweb:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Fetch pinned TWeb UI source
+        run: |
+          git clone https://github.com/morethanwords/tweb.git _build/tweb
+          cd _build/tweb
+          git checkout e3730e10073c3fc02e1360e3513b70b176d6afec
+      - name: Apply Roof-only transport and email auth
+        run: python3 roof-tweb/patch_tweb.py _build/tweb
+      - name: Verify no Telegram or Teamgram network endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -n -E 'web\.telegram\.org|web\.teamgram\.net|149\.154\.(167|171|175)\.' \
+            _build/tweb/src/lib/mtproto/dcConfigurator.ts
+          ! grep -n 'cachedNetworker.wrapApiCall(method, params, options)' \
+            _build/tweb/src/lib/appManagers/apiManager.ts
+          grep -n 'roofTransport.invoke' _build/tweb/src/lib/appManagers/apiManager.ts
+          grep -n 'ROOF_MTPROTO_DISABLED' _build/tweb/src/lib/mtproto/dcConfigurator.ts
+      - name: Build full Roof Web client
+        working-directory: _build/tweb
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+          pnpm install --frozen-lockfile
+          pnpm run generate-changelog
+          node build
+      - name: Verify Roof entry point
+        run: |
+          test -f _build/tweb/public/index.html
+          grep -qi 'Roof' _build/tweb/public/index.html
