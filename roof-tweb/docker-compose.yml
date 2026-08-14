@@ -1,5 +1,6 @@
 services:
   backend:
+    image: roof-backend:local
     build:
       context: ..
       dockerfile: deploy/backend.Dockerfile
@@ -18,6 +19,7 @@ services:
       retries: 20
 
   web:
+    image: roof-web:local
     build:
       context: ..
       dockerfile: roof-tweb/Dockerfile
