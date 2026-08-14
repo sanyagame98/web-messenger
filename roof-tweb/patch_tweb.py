@@ -83,9 +83,6 @@ def replace_invoke_api() -> None:
     start = text.find(signature)
     if start < 0:
         fail("invokeApi method not found")
-
-    # invokeApi is the final method in ApiManager. Replace the complete tail and
-    # explicitly restore the class closing brace instead of parsing its huge body.
     class_end = text.rfind("\n}")
     if class_end < start:
         fail("ApiManager class closing brace not found")
@@ -102,7 +99,7 @@ def disable_mtproto_network() -> None:
         r"export function constructTelegramWebSocketUrl\([^)]*\) \{.*?\n\}",
         re.DOTALL,
     )
-    replacement = """export function constructTelegramWebSocketUrl(_dcId: DcId, _connectionType: ConnectionType, _premium?: boolean) {\n  throw new Error('ROOF_MTPROTO_DISABLED');\n}"""
+    replacement = """export function constructTelegramWebSocketUrl(_dcId: DcId, _connectionType: ConnectionType, _premium?: boolean): string {\n  throw new Error('ROOF_MTPROTO_DISABLED');\n}"""
     text, count = pattern.subn(replacement, text, count=1)
     if count != 1:
         fail("could not disable WebSocket endpoint constructor")
@@ -111,15 +108,15 @@ def disable_mtproto_network() -> None:
     http_start = text.find("  private transportHTTP =")
     if min(socket_start, http_start) < 0:
         fail("transport methods not found")
-    text = text[:socket_start] + """  private transportSocket = (_dcId: DcId, _connectionType: ConnectionType, _premium?: boolean) => {\n    throw new Error('ROOF_MTPROTO_DISABLED');\n  };\n\n""" + text[http_start:]
+    text = text[:socket_start] + """  private transportSocket = (_dcId: DcId, _connectionType: ConnectionType, _premium?: boolean): MTTransport => {\n    throw new Error('ROOF_MTPROTO_DISABLED');\n  };\n\n""" + text[http_start:]
 
     http_start = text.find("  private transportHTTP =")
     choose_start = text.find("  public chooseServer(")
     if min(http_start, choose_start) < 0:
         fail("HTTP/chooseServer methods not found")
-    text = text[:http_start] + """  private transportHTTP = (_dcId: DcId, _connectionType: ConnectionType, _premium?: boolean) => {\n    throw new Error('ROOF_MTPROTO_DISABLED');\n  };\n\n""" + text[choose_start:]
+    text = text[:http_start] + """  private transportHTTP = (_dcId: DcId, _connectionType: ConnectionType, _premium?: boolean): MTTransport => {\n    throw new Error('ROOF_MTPROTO_DISABLED');\n  };\n\n""" + text[choose_start:]
 
-    choose_replacement = """  public chooseServer(\n    _dcId: DcId,\n    _connectionType: ConnectionType = 'client',\n    _transportType: TransportType = Modes.transport,\n    _reuse = true,\n    _premium?: boolean\n  ) {\n    throw new Error('ROOF_MTPROTO_DISABLED');\n  }"""
+    choose_replacement = """  public chooseServer(\n    _dcId: DcId,\n    _connectionType: ConnectionType = 'client',\n    _transportType: TransportType = Modes.transport,\n    _reuse = true,\n    _premium?: boolean\n  ): MTTransport {\n    throw new Error('ROOF_MTPROTO_DISABLED');\n  }"""
     text = replace_method(text, "  public chooseServer(", choose_replacement)
 
     text = re.sub(
