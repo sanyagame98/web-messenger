@@ -91,7 +91,7 @@ def _group_participant(chat: Chat, member: ChatMember) -> dict[str, Any]:
     }
 
 
-def _channel_participant(chat: Chat, member: ChatMember) -> dict[str, Any]:
+def _channel_participant_entity(chat: Chat, member: ChatMember) -> dict[str, Any]:
     if member.role == "owner":
         return {
             "_": "channelParticipantCreator",
@@ -223,7 +223,7 @@ async def _edit_channel_admin(
     if target is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Roof subscriber not found")
 
-    previous = _channel_participant(chat, target)
+    previous = _channel_participant_entity(chat, target)
     if target.role != "owner":
         rights = params.get("admin_rights") or {}
         flags = rights.get("pFlags") if isinstance(rights, dict) else {}
@@ -235,7 +235,7 @@ async def _edit_channel_admin(
     fresh_target = _member(fresh, user_id)
     if fresh_target is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Roof subscriber not found")
-    current = _channel_participant(fresh, fresh_target)
+    current = _channel_participant_entity(fresh, fresh_target)
     await manager.broadcast_chat(
         fresh.id,
         {
@@ -296,13 +296,13 @@ def _channel_participants(
     return {
         "_": "channels.channelParticipants",
         "count": total,
-        "participants": [_channel_participant(chat, item) for item in members],
+        "participants": [_channel_participant_entity(chat, item) for item in members],
         "chats": [],
         "users": [legacy._user(item.user, current_user.id) for item in members],
     }
 
 
-def _channel_participant(
+def _channel_participant_details(
     params: dict[str, Any],
     current_user: User,
     db: Session,
@@ -314,7 +314,7 @@ def _channel_participant(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Roof subscriber not found")
     return {
         "_": "channels.channelParticipant",
-        "participant": _channel_participant(chat, member),
+        "participant": _channel_participant_entity(chat, member),
         "chats": [],
         "users": [legacy._user(member.user, current_user.id)],
     }
@@ -391,7 +391,7 @@ async def invoke_v11(
     if method == "channels.getParticipants":
         return _channel_participants(params, current_user, db)
     if method == "channels.getParticipant":
-        return _channel_participant(params, current_user, db)
+        return _channel_participant_details(params, current_user, db)
     if method == "channels.editAdmin":
         return await _edit_channel_admin(params, current_user, db)
     if method == "channels.editBanned":
