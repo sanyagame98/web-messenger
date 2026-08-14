@@ -96,3 +96,31 @@ jobs:
       - name: Stop Roof stack
         if: always()
         run: docker compose -f roof-tweb/docker-compose.yml down -v
+
+  package:
+    needs: [docker-smoke]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build final Roof Docker images
+        run: docker compose -f roof-tweb/docker-compose.yml build
+      - name: Create offline Roof package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _package/Roof-Full-Local
+          docker save roof-backend:local roof-web:local -o _package/Roof-Full-Local/roof-images.tar
+          cp roof-package/docker-compose.yml _package/Roof-Full-Local/docker-compose.yml
+          cp roof-package/RUN_ROOF.bat _package/Roof-Full-Local/RUN_ROOF.bat
+          cp roof-package/STOP_ROOF.bat _package/Roof-Full-Local/STOP_ROOF.bat
+          printf 'Roof Full Local\nCommit: %s\nNetwork: Roof only\nStart: RUN_ROOF.bat\nURL: http://localhost:8080\n' "$GITHUB_SHA" > _package/Roof-Full-Local/README.txt
+          du -sh _package/Roof-Full-Local
+      - name: Upload Roof Full Local
+        uses: actions/upload-artifact@v4
+        with:
+          name: Roof-Full-Local
+          path: _package/Roof-Full-Local
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
