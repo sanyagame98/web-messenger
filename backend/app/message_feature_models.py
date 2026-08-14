@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -47,3 +47,26 @@ class PinnedMessage(Base):
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class DialogPreference(Base):
+    __tablename__ = "dialog_preferences"
+    __table_args__ = (
+        UniqueConstraint("user_id", "chat_id", name="uq_dialog_preference_user_chat"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    chat_id: Mapped[int] = mapped_column(
+        ForeignKey("chats.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    pin_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    mute_until: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    show_previews: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    silent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
