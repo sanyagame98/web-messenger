@@ -45,9 +45,12 @@ export default function SignInCard(_props: {spec: Spec}) {
   const [submitting, setSubmitting] = createSignal(false);
   const [error, setError] = createSignal('');
 
-  const submit = async(e?: Event) => {
-    e?.preventDefault();
+  const submit = async() => {
     if(submitting()) return;
+    if(!email().trim() || password().length < 6) {
+      setError('Введите email и пароль минимум из 6 символов');
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
@@ -62,6 +65,13 @@ export default function SignInCard(_props: {spec: Spec}) {
       setError(err?.message || 'Roof authorization failed');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const onKeyDown = (event: KeyboardEvent) => {
+    if(event.key === 'Enter') {
+      event.preventDefault();
+      void submit();
     }
   };
 
@@ -87,13 +97,13 @@ export default function SignInCard(_props: {spec: Spec}) {
           />
           <MediaHeader.Title>Roof</MediaHeader.Title>
           <MediaHeader.Subtitle class="secondary">
-            Вход по email и паролю. Никаких Telegram-кодов и номеров телефона.
+            Вход по email и паролю
           </MediaHeader.Subtitle>
         </MediaHeader>
       }
       inputWrapper={false}
     >
-      <form class="input-wrapper" onSubmit={submit}>
+      <div class="input-wrapper">
         <label class="input-field input-field-outline">
           <span class="input-field-border"/>
           <input
@@ -103,6 +113,7 @@ export default function SignInCard(_props: {spec: Spec}) {
             placeholder="Email"
             value={email()}
             onInput={(event) => setEmail(event.currentTarget.value)}
+            onKeyDown={onKeyDown}
             required
           />
         </label>
@@ -116,15 +127,15 @@ export default function SignInCard(_props: {spec: Spec}) {
             minlength="6"
             value={password()}
             onInput={(event) => setPassword(event.currentTarget.value)}
+            onKeyDown={onKeyDown}
             required
           />
         </label>
         {error() && <div class="error">{error()}</div>}
-        <Button type="submit" disabled={submitting()}>
+        <Button disabled={submitting()} onClick={() => void submit()}>
           {submitting() ? 'Подождите…' : registerMode() ? 'Создать аккаунт Roof' : 'Войти в Roof'}
         </Button>
         <Button
-          type="button"
           class="btn-secondary"
           onClick={() => {
             setError('');
@@ -133,7 +144,7 @@ export default function SignInCard(_props: {spec: Spec}) {
         >
           {registerMode() ? 'У меня уже есть аккаунт' : 'Регистрация по email'}
         </Button>
-      </form>
+      </div>
     </AuthCard>
   );
 }
