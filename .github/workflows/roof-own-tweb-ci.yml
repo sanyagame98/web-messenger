@@ -59,3 +59,40 @@ jobs:
         run: |
           test -f _build/tweb/dist/index.html
           grep -qi 'Roof' _build/tweb/dist/index.html
+
+  docker-smoke:
+    needs: [backend, tweb]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start complete Roof stack
+        run: docker compose -f roof-tweb/docker-compose.yml up --build -d
+      - name: Wait for Roof web
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/ >/tmp/roof-index.html; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f roof-tweb/docker-compose.yml logs
+          exit 1
+      - name: Verify Roof UI and own API proxy
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -qi 'Roof' /tmp/roof-index.html
+          EMAIL="ci-$GITHUB_RUN_ID@example.com"
+          curl -fsS -X POST http://127.0.0.1:8080/api/auth/register \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$EMAIL\",\"password\":\"roofpass123\"}" \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['access_token']; assert d['user']['email'].startswith('ci-')"
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose -f roof-tweb/docker-compose.yml logs
+      - name: Stop Roof stack
+        if: always()
+        run: docker compose -f roof-tweb/docker-compose.yml down -v
