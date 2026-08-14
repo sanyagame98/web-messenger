@@ -24,12 +24,21 @@ def _register(client: TestClient, email: str) -> tuple[str, dict]:
     return data["access_token"], data["user"]
 
 
-def _invoke(client: TestClient, token: str, method: str, params: dict | None = None):
-    response = client.post(
+def _invoke_response(
+    client: TestClient,
+    token: str,
+    method: str,
+    params: dict | None = None,
+):
+    return client.post(
         "/api/roof/invoke",
         headers={"Authorization": f"Bearer {token}"},
         json={"method": method, "params": params or {}},
     )
+
+
+def _invoke(client: TestClient, token: str, method: str, params: dict | None = None):
+    response = _invoke_response(client, token, method, params)
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -157,4 +166,105 @@ def test_roof_tweb_profile_group_and_startup_api() -> None:
             {"chat_id": chat_id, "title": "Roof Renamed Group"},
         )
         assert edited["chats"][0]["title"] == "Roof Renamed Group"
+        assert owner["id"] != member["id"]
+
+
+def test_roof_tweb_channel_permissions_edit_and_delete() -> None:
+    with TestClient(app) as client:
+        owner_token, owner = _register(client, "owner.channel@example.com")
+        member_token, member = _register(client, "member.channel@example.com")
+
+        created = _invoke(
+            client,
+            owner_token,
+            "channels.createChannel",
+            {"title": "Roof News", "about": "Roof channel", "broadcast": True},
+        )
+        channel = created["chats"][0]
+        assert channel["_"] == "channel"
+        channel_id = channel["id"]
+
+        invited = _invoke(
+            client,
+            owner_token,
+            "channels.inviteToChannel",
+            {
+                "channel": {"_": "inputChannel", "channel_id": channel_id, "access_hash": "0"},
+                "users": [
+                    {"_": "inputUser", "user_id": member["id"], "access_hash": "0"}
+                ],
+            },
+        )
+        assert len(invited["users"]) == 2
+
+        sent = _invoke(
+            client,
+            owner_token,
+            "messages.sendMessage",
+            {
+                "peer": {"_": "inputPeerChannel", "channel_id": channel_id, "access_hash": "0"},
+                "message": "Roof channel post",
+                "random_id": "3",
+            },
+        )
+        message_id = sent["updates"][0]["message"]["id"]
+        assert sent["updates"][0]["message"]["peer_id"]["_"] == "peerChannel"
+
+        forbidden = _invoke_response(
+            client,
+            member_token,
+            "messages.sendMessage",
+            {
+                "peer": {"_": "inputPeerChannel", "channel_id": channel_id, "access_hash": "0"},
+                "message": "subscriber cannot post",
+                "random_id": "4",
+            },
+        )
+        assert forbidden.status_code == 403
+
+        edited = _invoke(
+            client,
+            owner_token,
+            "messages.editMessage",
+            {
+                "peer": {"_": "inputPeerChannel", "channel_id": channel_id, "access_hash": "0"},
+                "id": message_id,
+                "message": "Roof edited post",
+            },
+        )
+        assert edited["updates"][0]["message"]["message"] == "Roof edited post"
+
+        history = _invoke(
+            client,
+            member_token,
+            "messages.getHistory",
+            {
+                "peer": {"_": "inputPeerChannel", "channel_id": channel_id, "access_hash": "0"},
+                "limit": 20,
+            },
+        )
+        assert history["messages"][0]["message"] == "Roof edited post"
+        assert history["chats"][0]["_"] == "channel"
+
+        deleted = _invoke(
+            client,
+            owner_token,
+            "messages.deleteMessages",
+            {"id": [message_id], "revoke": True},
+        )
+        assert deleted["pts_count"] == 1
+
+        empty_history = _invoke(
+            client,
+            member_token,
+            "messages.getHistory",
+            {
+                "peer": {"_": "inputPeerChannel", "channel_id": channel_id, "access_hash": "0"},
+                "limit": 20,
+            },
+        )
+        assert empty_history["messages"] == []
+
+        dialogs = _invoke(client, member_token, "messages.getDialogs", {"limit": 20})
+        assert any(chat["id"] == channel_id and chat["_"] == "channel" for chat in dialogs["chats"])
         assert owner["id"] != member["id"]
