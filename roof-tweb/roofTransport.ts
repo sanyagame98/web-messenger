@@ -323,6 +323,17 @@ class RoofTransport {
       };
     }
 
+    if(data.type === 'roof_reaction') {
+      const peer = this.peerForSocket(data, {sender_id: data.reaction_user_id});
+      return {
+        _: 'updateMessageReactions',
+        peer,
+        msg_id: Number(data.message_id),
+        top_msg_id: 0,
+        reactions: data.reactions || undefined
+      };
+    }
+
     return;
   }
 
