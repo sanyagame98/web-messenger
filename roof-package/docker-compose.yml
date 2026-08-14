@@ -1,0 +1,29 @@
+services:
+  backend:
+    image: roof-backend:local
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-roof-local-development-secret-key-change-me}
+      DATABASE_URL: sqlite:////app/data/roof.db
+      CORS_ORIGINS: "*"
+    volumes:
+      - roof_data:/app/data
+      - roof_uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 5s
+      timeout: 4s
+      retries: 20
+
+  web:
+    image: roof-web:local
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  roof_data:
+  roof_uploads:
