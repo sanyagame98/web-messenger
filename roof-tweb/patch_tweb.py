@@ -27,8 +27,6 @@ def replace_method(text: str, signature: str, replacement: str) -> str:
     if start < 0:
         fail(f"method not found: {signature.strip()}")
 
-    # Signatures can contain default object literals (`= {}`), so find the
-    # body opener by looking for a brace followed by a line break.
     brace = text.find(" {\n", start)
     if brace < 0:
         brace = text.find(" {\r\n", start)
@@ -75,15 +73,24 @@ def replace_invoke_api() -> None:
             fail("apiManager.ts has no imports")
         text = text[:first_import] + import_line + text[first_import:]
 
-    signature = "  public invokeApi<T extends keyof MethodDeclMap>("
-    replacement = """  public invokeApi<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {}, options: InvokeApiOptions = {}): CancellablePromise<MethodDeclMap[T]['res']> {\n    // Roof-only transport. There is intentionally no MTProto fallback.\n    return roofTransport.invoke(method as string, params as any, options as any) as CancellablePromise<MethodDeclMap[T]['res']>;\n  }"""
-    text = replace_method(text, signature, replacement)
-
     old_updates = """  public setUpdatesProcessor(callback: (obj: any) => void) {\n    this.networkerFactory.setUpdatesProcessor(callback);\n  }"""
     new_updates = """  public setUpdatesProcessor(callback: (obj: any) => void) {\n    roofTransport.onUpdate(callback);\n    roofTransport.connectUpdates();\n  }"""
     if old_updates not in text:
         fail("setUpdatesProcessor block not found")
     text = text.replace(old_updates, new_updates, 1)
+
+    signature = "  public invokeApi<T extends keyof MethodDeclMap>("
+    start = text.find(signature)
+    if start < 0:
+        fail("invokeApi method not found")
+
+    # invokeApi is the final method in ApiManager. Replace the complete tail and
+    # explicitly restore the class closing brace instead of parsing its huge body.
+    class_end = text.rfind("\n}")
+    if class_end < start:
+        fail("ApiManager class closing brace not found")
+    replacement = """  public invokeApi<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {}, options: InvokeApiOptions = {}): CancellablePromise<MethodDeclMap[T]['res']> {\n    // Roof-only transport. There is intentionally no MTProto fallback.\n    return roofTransport.invoke(method as string, params as any, options as any) as CancellablePromise<MethodDeclMap[T]['res']>;\n  }"""
+    text = text[:start] + replacement + text[class_end:]
     path.write_text(text, encoding="utf-8")
 
 
@@ -115,7 +122,6 @@ def disable_mtproto_network() -> None:
     choose_replacement = """  public chooseServer(\n    _dcId: DcId,\n    _connectionType: ConnectionType = 'client',\n    _transportType: TransportType = Modes.transport,\n    _reuse = true,\n    _premium?: boolean\n  ) {\n    throw new Error('ROOF_MTPROTO_DISABLED');\n  }"""
     text = replace_method(text, "  public chooseServer(", choose_replacement)
 
-    # Remove inherited DC tables and any endpoint/IP literals left in comments.
     text = re.sub(
         r"  private sslSubdomains = \[[^\n]+\];\n\n  private dcOptions = Modes\.test \?.*?\n    \];\n\n",
         "",
