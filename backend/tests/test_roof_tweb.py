@@ -268,3 +268,85 @@ def test_roof_tweb_channel_permissions_edit_and_delete() -> None:
         dialogs = _invoke(client, member_token, "messages.getDialogs", {"limit": 20})
         assert any(chat["id"] == channel_id and chat["_"] == "channel" for chat in dialogs["chats"])
         assert owner["id"] != member["id"]
+
+
+def test_roof_tweb_single_reaction_per_user() -> None:
+    with TestClient(app) as client:
+        author_token, author = _register(client, "reaction.author@example.com")
+        reactor_token, reactor = _register(client, "reaction.user@example.com")
+        peer_for_author = {
+            "_": "inputPeerUser",
+            "user_id": reactor["id"],
+            "access_hash": "0",
+        }
+        peer_for_reactor = {
+            "_": "inputPeerUser",
+            "user_id": author["id"],
+            "access_hash": "0",
+        }
+
+        sent = _invoke(
+            client,
+            author_token,
+            "messages.sendMessage",
+            {"peer": peer_for_author, "message": "react to me", "random_id": "5"},
+        )
+        message_id = sent["updates"][0]["message"]["id"]
+
+        first = _invoke(
+            client,
+            reactor_token,
+            "messages.sendReaction",
+            {
+                "peer": peer_for_reactor,
+                "msg_id": message_id,
+                "reaction": [{"_": "reactionEmoji", "emoticon": "👍"}],
+            },
+        )
+        assert first["updates"][0]["reactions"]["results"][0]["count"] == 1
+
+        replaced = _invoke(
+            client,
+            reactor_token,
+            "messages.sendReaction",
+            {
+                "peer": peer_for_reactor,
+                "msg_id": message_id,
+                "reaction": [{"_": "reactionEmoji", "emoticon": "❤️"}],
+            },
+        )
+        results = replaced["updates"][0]["reactions"]["results"]
+        assert len(results) == 1
+        assert results[0]["reaction"]["emoticon"] == "❤️"
+        assert results[0]["count"] == 1
+
+        history = _invoke(
+            client,
+            author_token,
+            "messages.getHistory",
+            {"peer": peer_for_author, "limit": 20},
+        )
+        assert history["messages"][0]["reactions"]["results"][0]["count"] == 1
+
+        reaction_list = _invoke(
+            client,
+            author_token,
+            "messages.getMessageReactionsList",
+            {"peer": peer_for_author, "id": message_id, "limit": 100},
+        )
+        assert reaction_list["count"] == 1
+        assert reaction_list["reactions"][0]["peer_id"]["user_id"] == reactor["id"]
+
+        _invoke(
+            client,
+            reactor_token,
+            "messages.sendReaction",
+            {"peer": peer_for_reactor, "msg_id": message_id, "reaction": []},
+        )
+        clean_history = _invoke(
+            client,
+            author_token,
+            "messages.getHistory",
+            {"peer": peer_for_author, "limit": 20},
+        )
+        assert "reactions" not in clean_history["messages"][0]
