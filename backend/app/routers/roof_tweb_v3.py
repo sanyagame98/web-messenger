@@ -163,7 +163,10 @@ def _invite_channel(params: dict[str, Any], current_user: User, db: Session) -> 
         if user_id <= 0 or db.get(User, user_id) is None:
             continue
         exists = db.scalar(
-            select(ChatMember.id).where(ChatMember.chat_id == chat.id, ChatMember.user_id == user_id)
+            select(ChatMember.id).where(
+                ChatMember.chat_id == chat.id,
+                ChatMember.user_id == user_id,
+            )
         )
         if exists is None:
             db.add(ChatMember(chat_id=chat.id, user_id=user_id, role="member"))
@@ -235,7 +238,11 @@ async def _edit_message(params: dict[str, Any], current_user: User, db: Session)
     }
 
 
-async def _delete_messages(params: dict[str, Any], current_user: User, db: Session) -> dict[str, Any]:
+async def _delete_messages(
+    params: dict[str, Any],
+    current_user: User,
+    db: Session,
+) -> dict[str, Any]:
     ids = params.get("id") or []
     if not isinstance(ids, list):
         ids = [ids]
@@ -301,14 +308,29 @@ async def invoke_v3(
         if membership is not None:
             db.delete(membership)
             db.commit()
-        return {"_": "updates", "updates": [], "users": [], "chats": [], "date": _now(), "seq": 0}
+        return {
+            "_": "updates",
+            "updates": [],
+            "users": [],
+            "chats": [],
+            "date": _now(),
+            "seq": 0,
+        }
     if method == "channels.deleteChannel":
         chat = _load_chat(_channel_id(params.get("channel")), current_user, db)
-        if _member(chat, current_user.id) is None or _member(chat, current_user.id).role != "owner":
+        membership = _member(chat, current_user.id)
+        if membership is None or membership.role != "owner":
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Only Roof channel owner can delete it")
         db.delete(chat)
         db.commit()
-        return {"_": "updates", "updates": [], "users": [], "chats": [], "date": _now(), "seq": 0}
+        return {
+            "_": "updates",
+            "updates": [],
+            "users": [],
+            "chats": [],
+            "date": _now(),
+            "seq": 0,
+        }
 
     if method == "messages.setTyping":
         return await _set_typing(params, current_user, db)
