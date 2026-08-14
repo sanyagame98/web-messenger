@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{BASE_DIR / 'data' / 'app.db'}"
 
     uploads_dir: Path = BASE_DIR / "uploads"
-    max_upload_mb: int = 10
+    max_upload_mb: int = 256
 
     cors_origins: str = "*"
 
