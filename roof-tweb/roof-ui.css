@@ -14,6 +14,7 @@
 .tgico-user:before,
 .tgico-settings:before,
 .tgico-more:before,
+.tgico-arrowhead:before,
 .tgico-send:before,
 .tgico-smallscreen:before,
 .tgico-emoji:before,
@@ -36,6 +37,7 @@
 .tgico-user:before { --roof-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm0-2a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Zm0 3c-5 0-8 2.5-8 6v2h16v-2c0-3.5-3-6-8-6Zm-6 6c0-2.15 2.2-4 6-4s6 1.85 6 4H6Z'/%3E%3C/svg%3E"); }
 .tgico-settings:before { --roof-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='m19.14 12.94.04-.94-.04-.94 2.03-1.58-2-3.46-2.49 1a7.8 7.8 0 0 0-1.62-.94L14.68 3h-4l-.38 3.08c-.58.24-1.12.55-1.62.94l-2.49-1-2 3.46 2.03 1.58-.04.94.04.94-2.03 1.58 2 3.46 2.49-1c.5.39 1.04.7 1.62.94L10.68 21h4l.38-3.08c.58-.24 1.12-.55 1.62-.94l2.49 1 2-3.46-2.03-1.58ZM12.68 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z'/%3E%3C/svg%3E"); }
 .tgico-more:before { --roof-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='5' cy='12' r='2'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3Ccircle cx='19' cy='12' r='2'/%3E%3C/svg%3E"); }
+.tgico-arrowhead:before { --roof-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='m9 5 7 7-7 7 1.5 1.5L19 12l-8.5-8.5L9 5Z'/%3E%3C/svg%3E"); }
 .tgico-send:before { --roof-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M3 20 21 12 3 4v6l12 2-12 2v6Z'/%3E%3C/svg%3E"); }
 .tgico-emoji:before { --roof-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16ZM8 8h2v2H8V8Zm6 0h2v2h-2V8Zm-6.5 5h9c-.6 2.1-2.25 3.5-4.5 3.5S8.1 15.1 7.5 13Z'/%3E%3C/svg%3E"); }
 .tgico-attach:before { --roof-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M8 12.5 14.5 6a3.5 3.5 0 1 1 5 5l-8 8a5.5 5.5 0 1 1-7.78-7.78l8-8 1.42 1.42-8 8a3.5 3.5 0 1 0 4.95 4.95l8-8a1.5 1.5 0 0 0-2.12-2.12L9.47 14a.75.75 0 1 0 1.06 1.06l5.5-5.5 1.41 1.42-5.5 5.5a2.75 2.75 0 0 1-3.89-3.89L8 12.5Z'/%3E%3C/svg%3E"); }
