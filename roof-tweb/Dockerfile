@@ -14,6 +14,7 @@ RUN git clone --filter=blob:none https://github.com/morethanwords/tweb.git /src/
 COPY roof-tweb/patch_tweb.py /src/roof/patch_tweb.py
 COPY roof-tweb/roofTransport.ts /src/roof/roofTransport.ts
 COPY roof-tweb/SignInCard.tsx /src/roof/SignInCard.tsx
+COPY roof-tweb/SettingsRoof.tsx /src/roof/SettingsRoof.tsx
 COPY roof-tweb/roof-ui.css /src/roof/roof-ui.css
 RUN python3 /src/roof/patch_tweb.py /src/tweb \
     && cp /src/roof/roof-ui.css /src/tweb/public/roof-ui.css \
@@ -22,7 +23,7 @@ from pathlib import Path
 path = Path('/src/tweb/index.html')
 text = path.read_text(encoding='utf-8')
 if '/roof-ui.css' not in text:
-    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v2">\n</head>')
+    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v3">\n</head>')
 path.write_text(text, encoding='utf-8')
 PY
 
@@ -32,10 +33,9 @@ RUN pnpm install --frozen-lockfile && pnpm run build
 FROM nginx:1.29-alpine
 COPY roof-tweb/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /src/tweb/dist/ /usr/share/nginx/html/
-# Copy the compatibility layer directly into the FINAL image. This avoids
-# Vite/public asset filtering and guarantees the link in index.html resolves.
 COPY roof-tweb/roof-ui.css /usr/share/nginx/html/roof-ui.css
 RUN test -s /usr/share/nginx/html/roof-ui.css \
     && grep -q 'tgico-search' /usr/share/nginx/html/roof-ui.css \
+    && grep -q 'roof-premium-card' /usr/share/nginx/html/roof-ui.css \
     && grep -q '/roof-ui.css' /usr/share/nginx/html/index.html
 EXPOSE 80
