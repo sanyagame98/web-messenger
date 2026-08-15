@@ -12,18 +12,19 @@ RUN git clone --filter=blob:none https://github.com/morethanwords/tweb.git /src/
     && git checkout "$TWEB_COMMIT"
 
 COPY roof-tweb/patch_tweb.py /src/roof/patch_tweb.py
+COPY roof-tweb/patch_tweb_safe.py /src/roof/patch_tweb_safe.py
 COPY roof-tweb/roofTransport.ts /src/roof/roofTransport.ts
 COPY roof-tweb/SignInCard.tsx /src/roof/SignInCard.tsx
 COPY roof-tweb/SettingsRoof.tsx /src/roof/SettingsRoof.tsx
 COPY roof-tweb/roof-ui.css /src/roof/roof-ui.css
-RUN python3 /src/roof/patch_tweb.py /src/tweb \
+RUN python3 /src/roof/patch_tweb_safe.py /src/tweb \
     && cp /src/roof/roof-ui.css /src/tweb/public/roof-ui.css \
     && python3 - <<'PY'
 from pathlib import Path
 path = Path('/src/tweb/index.html')
 text = path.read_text(encoding='utf-8')
 if '/roof-ui.css' not in text:
-    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v3">\n</head>')
+    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v4">\n</head>')
 path.write_text(text, encoding='utf-8')
 PY
 
