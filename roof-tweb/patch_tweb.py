@@ -131,6 +131,50 @@ def disable_mtproto_network() -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def fix_roof_connection_status() -> None:
+    """TWeb's status widget watches MTProto. Roof intentionally has no MTProto,
+    so leaving that widget enabled produces a permanent 'Waiting for network'.
+    Roof HTTP/WebSocket availability is handled by roofTransport instead.
+    """
+    path = ROOT / "src/components/connectionStatus.ts"
+    text = path.read_text(encoding="utf-8")
+    old = "const NO_STATUS = false;"
+    if old not in text:
+        fail("connectionStatus NO_STATUS flag not found")
+    text = text.replace(old, "const NO_STATUS = true;", 1)
+    path.write_text(text, encoding="utf-8")
+
+
+def fix_roof_auth_bootstrap() -> None:
+    """Do not trust a persisted TWeb signed-in state without a Roof token.
+    Old/stale browser state otherwise opens the IM shell with no self user and
+    shows `undefined` in the side menu. SignInCard persists the corrected auth
+    state once mounted.
+    """
+    path = ROOT / "src/index.ts"
+    text = path.read_text(encoding="utf-8")
+    needle = "  let authState = stateResult.state.authState;\n"
+    replacement = """  let authState = stateResult.state.authState;\n\n  // Roof authentication is authoritative. A TWeb session without a Roof\n  // bearer token is a stale session and must return to Roof sign-in.\n  let roofAccessToken: string | null = null;\n  try {\n    roofAccessToken = localStorage.getItem('roof_access_token');\n  } catch {}\n  if(!roofAccessToken) {\n    authState = {_: 'authStateSignIn'};\n  }\n"""
+    if needle not in text:
+        fail("index authState bootstrap not found")
+    text = text.replace(needle, replacement, 1)
+    path.write_text(text, encoding="utf-8")
+
+
+def expire_invalid_roof_token() -> None:
+    """If the backend rejects an existing token, clear it and return to sign-in
+    on the next tick. This also repairs browsers carrying an expired token.
+    """
+    path = ROOT / "src/lib/roof/roofTransport.ts"
+    text = path.read_text(encoding="utf-8")
+    needle = """    if(!response.ok) {\n      let detail = response.statusText;"""
+    replacement = """    if(!response.ok) {\n      if(response.status === 401 && token && !path.startsWith('/auth/')) {\n        this.setToken(null);\n        globalThis.setTimeout(() => globalThis.location?.reload(), 0);\n      }\n      let detail = response.statusText;"""
+    if needle not in text:
+        fail("roofTransport HTTP error block not found")
+    text = text.replace(needle, replacement, 1)
+    path.write_text(text, encoding="utf-8")
+
+
 def strip_entry_branding() -> None:
     # Production metadata is injected from this handlebars context.
     vite_path = ROOT / "vite.config.ts"
@@ -165,6 +209,9 @@ def verify() -> None:
     api = (ROOT / "src/lib/appManagers/apiManager.ts").read_text(encoding="utf-8")
     dc = (ROOT / "src/lib/mtproto/dcConfigurator.ts").read_text(encoding="utf-8")
     vite = (ROOT / "vite.config.ts").read_text(encoding="utf-8")
+    status = (ROOT / "src/components/connectionStatus.ts").read_text(encoding="utf-8")
+    index = (ROOT / "src/index.ts").read_text(encoding="utf-8")
+    transport = (ROOT / "src/lib/roof/roofTransport.ts").read_text(encoding="utf-8")
     if "cachedNetworker.wrapApiCall(method, params, options)" in api:
         fail("MTProto invoke fallback remains")
     if "roofTransport.invoke" not in api:
@@ -173,6 +220,12 @@ def verify() -> None:
         fail("Telegram Web endpoint remains")
     if "title: 'Roof'" not in vite:
         fail("Roof build title is not configured")
+    if "const NO_STATUS = true;" not in status:
+        fail("legacy MTProto connection status is still enabled")
+    if "localStorage.getItem('roof_access_token')" not in index:
+        fail("Roof auth bootstrap guard is missing")
+    if "response.status === 401" not in transport:
+        fail("Roof stale-token recovery is missing")
     for prefix in ("149.154.175.", "149.154.167.", "149.154.171."):
         if prefix in dc:
             fail(f"Telegram DC address remains: {prefix}")
@@ -182,6 +235,9 @@ copy_overlay("roofTransport.ts", "src/lib/roof/roofTransport.ts")
 copy_overlay("SignInCard.tsx", "src/pages/cards/SignInCard.tsx")
 replace_invoke_api()
 disable_mtproto_network()
+fix_roof_connection_status()
+fix_roof_auth_bootstrap()
+expire_invalid_roof_token()
 strip_entry_branding()
 verify()
-print("[Roof TWeb patch] Roof-only API installed; Telegram/Teamgram network disabled")
+print("[Roof TWeb patch] Roof-only API installed; network status/auth bootstrap fixed")
