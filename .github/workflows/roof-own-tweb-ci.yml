@@ -41,10 +41,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ! grep -R -n -E 'web\.telegram\.org|web\.teamgram\.net|149\.154\.(167|171|175)\.' \
-            _build/tweb/src/lib/mtproto/dcConfigurator.ts
-          ! grep -n 'cachedNetworker.wrapApiCall(method, params, options)' \
-            _build/tweb/src/lib/appManagers/apiManager.ts
+          ! grep -R -n -E 'web\.telegram\.org|web\.teamgram\.net|149\.154\.(167|171|175)\.' _build/tweb/src/lib/mtproto/dcConfigurator.ts
+          ! grep -n 'cachedNetworker.wrapApiCall(method, params, options)' _build/tweb/src/lib/appManagers/apiManager.ts
           grep -n 'roofTransport.invoke' _build/tweb/src/lib/appManagers/apiManager.ts
           grep -n 'ROOF_MTPROTO_DISABLED' _build/tweb/src/lib/mtproto/dcConfigurator.ts
       - name: Build full Roof Web client
@@ -67,15 +65,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build and start complete Roof stack
-        run: docker compose -f roof-tweb/docker-compose.yml up --build -d
+        run: |
+          mkdir -p roof-package/premium-emoji-packs
+          docker compose -f roof-tweb/docker-compose.yml up --build -d
       - name: Wait for Roof web
         shell: bash
         run: |
           set -euo pipefail
           for i in $(seq 1 60); do
-            if curl -fsS http://127.0.0.1:8080/ >/tmp/roof-index.html; then
-              exit 0
-            fi
+            if curl -fsS http://127.0.0.1:8080/ >/tmp/roof-index.html; then exit 0; fi
             sleep 2
           done
           docker compose -f roof-tweb/docker-compose.yml logs
@@ -90,10 +88,7 @@ jobs:
           grep -q 'tgico-search' /tmp/roof-ui.css
           grep -q 'Segoe UI Emoji' /tmp/roof-ui.css
           EMAIL="ci-$GITHUB_RUN_ID@example.com"
-          curl -fsS -X POST http://127.0.0.1:8080/api/auth/register \
-            -H 'Content-Type: application/json' \
-            -d "{\"email\":\"$EMAIL\",\"password\":\"roofpass123\"}" \
-            | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['access_token']; assert d['user']['email'].startswith('ci-')"
+          curl -fsS -X POST http://127.0.0.1:8080/api/auth/register -H 'Content-Type: application/json' -d "{\"email\":\"$EMAIL\",\"password\":\"roofpass123\"}" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['access_token']; assert d['user']['email'].startswith('ci-')"
       - name: Show logs on failure
         if: failure()
         run: docker compose -f roof-tweb/docker-compose.yml logs
@@ -118,12 +113,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p _package/Roof-Full-Local
+          mkdir -p _package/Roof-Full-Local/premium-emoji-packs
           docker save roof-backend:local roof-web:local -o _package/Roof-Full-Local/roof-images.tar
           cp roof-package/docker-compose.yml _package/Roof-Full-Local/docker-compose.yml
           cp roof-package/RUN_ROOF.bat _package/Roof-Full-Local/RUN_ROOF.bat
           cp roof-package/STOP_ROOF.bat _package/Roof-Full-Local/STOP_ROOF.bat
-          printf 'Roof Full Local\nCommit: %s\nNetwork: Roof only\nStart: RUN_ROOF.bat\nURL: http://localhost:8080\n' "$GITHUB_SHA" > _package/Roof-Full-Local/README.txt
+          cat > _package/Roof-Full-Local/premium-emoji-packs/README.txt <<'EOF'
+Roof Premium Emoji Packs
+
+Put collection ZIP files directly into this folder. Do not unpack them.
+Supported collection source format: ZIP containing .tgs animated emoji files.
+Example: my-purple-pack.zip
+
+Roof keeps these packs local. Restart RUN_ROOF.bat after adding a collection.
+EOF
+          printf 'Roof Full Local\nCommit: %s\nNetwork: Roof only\nStart: RUN_ROOF.bat\nURL: http://localhost:8080\nPremium emoji packs: premium-emoji-packs\\ (ZIP with .tgs files; do not unpack)\n' "$GITHUB_SHA" > _package/Roof-Full-Local/README.txt
           du -sh _package/Roof-Full-Local
       - name: Upload Roof Full Local
         uses: actions/upload-artifact@v4
