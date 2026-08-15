@@ -8,11 +8,12 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import Base, engine
+from app import profile_meta_models as _profile_meta_models
 from app.routers import auth as auth_router
 from app.routers import chats as chats_router
 from app.routers import files as files_router
 from app.routers import messages as messages_router
-from app.routers import roof_tweb_v14 as roof_tweb_router
+from app.routers import roof_tweb_v15 as roof_tweb_router
 from app.routers import users as users_router
 from app.websocket import websocket_endpoint
 
