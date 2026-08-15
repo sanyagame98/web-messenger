@@ -22,7 +22,7 @@ from pathlib import Path
 path = Path('/src/tweb/index.html')
 text = path.read_text(encoding='utf-8')
 if '/roof-ui.css' not in text:
-    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css">\n</head>')
+    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v2">\n</head>')
 path.write_text(text, encoding='utf-8')
 PY
 
@@ -32,4 +32,10 @@ RUN pnpm install --frozen-lockfile && pnpm run build
 FROM nginx:1.29-alpine
 COPY roof-tweb/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /src/tweb/dist/ /usr/share/nginx/html/
+# Copy the compatibility layer directly into the FINAL image. This avoids
+# Vite/public asset filtering and guarantees the link in index.html resolves.
+COPY roof-tweb/roof-ui.css /usr/share/nginx/html/roof-ui.css
+RUN test -s /usr/share/nginx/html/roof-ui.css \
+    && grep -q 'tgico-search' /usr/share/nginx/html/roof-ui.css \
+    && grep -q '/roof-ui.css' /usr/share/nginx/html/index.html
 EXPOSE 80
