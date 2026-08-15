@@ -22,6 +22,10 @@ services:
         condition: service_healthy
     ports:
       - "8080:80"
+    volumes:
+      # Drop any premium emoji collection ZIPs here. Roof serves this folder
+      # locally and never uploads the packs to Telegram or another service.
+      - ./premium-emoji-packs:/usr/share/nginx/html/premium-emoji-packs:ro
     restart: unless-stopped
 
 volumes:
