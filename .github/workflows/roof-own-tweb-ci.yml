@@ -85,6 +85,10 @@ jobs:
         run: |
           set -euo pipefail
           grep -qi 'Roof' /tmp/roof-index.html
+          grep -q '/roof-ui.css' /tmp/roof-index.html
+          curl -fsS http://127.0.0.1:8080/roof-ui.css >/tmp/roof-ui.css
+          grep -q 'tgico-search' /tmp/roof-ui.css
+          grep -q 'Segoe UI Emoji' /tmp/roof-ui.css
           EMAIL="ci-$GITHUB_RUN_ID@example.com"
           curl -fsS -X POST http://127.0.0.1:8080/api/auth/register \
             -H 'Content-Type: application/json' \
@@ -105,6 +109,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build final Roof Docker images
         run: docker compose -f roof-tweb/docker-compose.yml build
+      - name: Verify final web image contains Roof UI layer
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint sh roof-web:local -c "test -s /usr/share/nginx/html/roof-ui.css && grep -q tgico-search /usr/share/nginx/html/roof-ui.css && grep -q /roof-ui.css /usr/share/nginx/html/index.html"
       - name: Create offline Roof package
         shell: bash
         run: |
