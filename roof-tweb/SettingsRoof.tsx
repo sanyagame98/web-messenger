@@ -12,7 +12,7 @@ import {
   AppSpeakersAndCameraTab,
   AppStickersAndEmojiTab,
   getEditProfileInitArgs
-} from '@components/solidJsTabs';
+} from '@components/solidJsTabs/tabs';
 import ButtonIcon from '@components/buttonIcon';
 import rootScope from '@lib/rootScope';
 import Row from '@components/rowTsx';
