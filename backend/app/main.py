@@ -6,9 +6,9 @@ from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app import profile_meta_models  # noqa: F401 - registers SQLAlchemy metadata
 from app.config import settings
 from app.database import Base, engine
-from app import profile_meta_models as _profile_meta_models
 from app.routers import auth as auth_router
 from app.routers import chats as chats_router
 from app.routers import files as files_router
