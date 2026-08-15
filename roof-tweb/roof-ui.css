@@ -43,13 +43,91 @@
 .tgico-attach:before { --roof-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M8 12.5 14.5 6a3.5 3.5 0 1 1 5 5l-8 8a5.5 5.5 0 1 1-7.78-7.78l8-8 1.42 1.42-8 8a3.5 3.5 0 1 0 4.95 4.95l8-8a1.5 1.5 0 0 0-2.12-2.12L9.47 14a.75.75 0 1 0 1.06 1.06l5.5-5.5 1.41 1.42-5.5 5.5a2.75 2.75 0 0 1-3.89-3.89L8 12.5Z'/%3E%3C/svg%3E"); }
 
 /* Native Unicode emoji must stay color emoji instead of monochrome/tofu glyphs. */
-.emoji, .emoji-native, .input-message-input, .message, .peer-title {
+.emoji, .emoji-native, .input-message-input, .message, .peer-title,
+.roof-status-button, .roof-premium-subtitle {
   font-family: var(--font-regular), "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
 }
 
-/* Roof keeps the Telegram-like geometry, but makes interactive surfaces clearer. */
 .btn-menu-item { min-height: 44px; border-radius: 10px; }
 .btn-menu-item .tgico { opacity: .9; }
 .input-search { border-radius: 18px; }
 .sidebar-tools-button, .btn-circle { transition: transform .16s ease, background-color .16s ease; }
 .sidebar-tools-button:active, .btn-circle:active { transform: scale(.94); }
+
+.roof-premium-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 4px 8px 10px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--roof-accent) 38%, transparent);
+  border-radius: 18px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--roof-accent) 18%, transparent), rgba(255,255,255,.025));
+}
+.roof-premium-mark {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  border-radius: 14px;
+  font-size: 24px;
+  color: #fff;
+  background: linear-gradient(145deg, #9b7cff, #6f4de8);
+  box-shadow: 0 8px 24px rgba(123, 88, 238, .28);
+}
+.roof-premium-copy { min-width: 0; flex: 1; }
+.roof-premium-title { font-size: 16px; font-weight: 700; }
+.roof-premium-subtitle { margin-top: 3px; font-size: 13px; opacity: .68; }
+.roof-premium-state { color: var(--roof-accent); font-size: 13px; font-weight: 600; }
+
+.roof-profile-premium-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 6px 12px;
+}
+.roof-profile-premium-title { font-size: 15px; font-weight: 700; }
+.roof-profile-premium-caption { margin-top: 4px; font-size: 12px; opacity: .62; }
+.roof-premium-badge {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  color: #fff;
+  background: linear-gradient(145deg, #9b7cff, #6f4de8);
+  box-shadow: 0 7px 20px rgba(123, 88, 238, .26);
+}
+.roof-status-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  padding: 4px 4px 8px;
+}
+.roof-status-button {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 13px;
+  min-width: 0;
+  height: 44px;
+  font-size: 23px;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+  background: rgba(255,255,255,.035);
+  transition: transform .14s ease, border-color .14s ease, background-color .14s ease;
+}
+.roof-status-button:hover { background: rgba(255,255,255,.07); transform: translateY(-1px); }
+.roof-status-button:active { transform: scale(.94); }
+.roof-status-button.is-selected {
+  border-color: var(--roof-accent);
+  background: color-mix(in srgb, var(--roof-accent) 17%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--roof-accent) 35%, transparent);
+}
+.roof-status-clear { font-size: 25px; opacity: .8; }
+
+@media (max-width: 520px) {
+  .roof-status-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .roof-premium-card { margin-inline: 4px; }
+}
