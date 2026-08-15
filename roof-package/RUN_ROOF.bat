@@ -16,7 +16,10 @@ if not exist "roof-images.tar" (
   exit /b 1
 )
 
-echo [Roof] Loading Roof images. First launch can take a few minutes...
+echo [Roof] Stopping any previous Roof containers...
+docker compose down --remove-orphans >nul 2>&1
+
+echo [Roof] Loading fresh Roof images. First launch can take a few minutes...
 docker load -i roof-images.tar
 if errorlevel 1 (
   echo [Roof] Failed to load Docker images.
@@ -24,8 +27,8 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [Roof] Starting local messenger...
-docker compose up -d
+echo [Roof] Starting fresh local messenger containers...
+docker compose up -d --force-recreate
 if errorlevel 1 (
   echo [Roof] Start failed. Run: docker compose logs
   pause
@@ -33,6 +36,6 @@ if errorlevel 1 (
 )
 
 echo.
-echo [Roof] Ready: http://localhost:8080
-start "" http://localhost:8080
+echo [Roof] Ready: http://localhost:8080/?roof_refresh=2
+start "" "http://localhost:8080/?roof_refresh=2"
 endlocal
