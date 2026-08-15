@@ -65,9 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build and start complete Roof stack
-        run: |
-          mkdir -p roof-package/premium-emoji-packs
-          docker compose -f roof-tweb/docker-compose.yml up --build -d
+        run: docker compose -f roof-tweb/docker-compose.yml up --build -d
       - name: Wait for Roof web
         shell: bash
         run: |
@@ -118,15 +116,7 @@ jobs:
           cp roof-package/docker-compose.yml _package/Roof-Full-Local/docker-compose.yml
           cp roof-package/RUN_ROOF.bat _package/Roof-Full-Local/RUN_ROOF.bat
           cp roof-package/STOP_ROOF.bat _package/Roof-Full-Local/STOP_ROOF.bat
-          cat > _package/Roof-Full-Local/premium-emoji-packs/README.txt <<'EOF'
-Roof Premium Emoji Packs
-
-Put collection ZIP files directly into this folder. Do not unpack them.
-Supported collection source format: ZIP containing .tgs animated emoji files.
-Example: my-purple-pack.zip
-
-Roof keeps these packs local. Restart RUN_ROOF.bat after adding a collection.
-EOF
+          printf '%s\n' 'Roof Premium Emoji Packs' '' 'Put collection ZIP files directly into this folder. Do not unpack them.' 'Supported format: ZIP containing .tgs animated emoji files.' 'Example: my-purple-pack.zip' '' 'Restart RUN_ROOF.bat after adding a collection.' > _package/Roof-Full-Local/premium-emoji-packs/README.txt
           printf 'Roof Full Local\nCommit: %s\nNetwork: Roof only\nStart: RUN_ROOF.bat\nURL: http://localhost:8080\nPremium emoji packs: premium-emoji-packs\\ (ZIP with .tgs files; do not unpack)\n' "$GITHUB_SHA" > _package/Roof-Full-Local/README.txt
           du -sh _package/Roof-Full-Local
       - name: Upload Roof Full Local
