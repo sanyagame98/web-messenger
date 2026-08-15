@@ -22,10 +22,7 @@ USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{4,32}$")
 def _clean_username(value: Any) -> str:
     username = str(value or "").strip().lstrip("@").lower()
     if not USERNAME_RE.fullmatch(username):
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            "ROOF_USERNAME_INVALID",
-        )
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "ROOF_USERNAME_INVALID")
     return username
 
 
@@ -90,9 +87,7 @@ async def _update_profile(
         first_name = str(params.get("first_name") or "").strip()
         last_name = str(params.get("last_name") or "").strip()
         display_name = " ".join(part for part in (first_name, last_name) if part).strip()
-        if not display_name:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "FIRSTNAME_INVALID")
-        if len(display_name) > 64:
+        if not display_name or len(display_name) > 64:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "FIRSTNAME_INVALID")
         current_user.display_name = display_name
     if "about" in params:
@@ -101,6 +96,22 @@ async def _update_profile(
     db.refresh(current_user)
     await _broadcast_identity(current_user, db)
     return _serialized_user(current_user)
+
+
+def _available_reactions() -> dict[str, Any]:
+    # TWeb can still use Unicode reactions through Roof's messages.sendReaction.
+    # No Telegram animation documents are returned because Roof is fully local.
+    return {"_": "messages.availableReactions", "hash": 1, "reactions": []}
+
+
+def _emoji_keywords(params: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "_": "emojiKeywordsDifference",
+        "lang_code": str(params.get("lang_code") or "en"),
+        "from_version": int(params.get("from_version", 0) or 0),
+        "version": 1,
+        "keywords": [],
+    }
 
 
 @router.post("/invoke")
@@ -118,6 +129,23 @@ async def invoke_v14(
         return await _update_username(params, current_user, db)
     if method == "account.updateProfile":
         return await _update_profile(params, current_user, db)
+    if method == "account.updateStatus":
+        return True
+
+    # Native emoji/reaction UI must open even though Roof does not use Telegram
+    # sticker/animation document infrastructure.
+    if method == "messages.getEmojiKeywordsDifference":
+        return _emoji_keywords(params)
+    if method == "messages.getCustomEmojiDocuments":
+        return []
+    if method == "messages.getAvailableReactions":
+        return _available_reactions()
+    if method in {"messages.getEmojiStickers", "messages.getFeaturedEmojiStickers"}:
+        return {"_": "messages.allStickers", "hash": 1, "sets": []}
+    if method in {"messages.getRecentReactions", "messages.getTopReactions"}:
+        return {"_": "messages.reactions", "hash": 1, "reactions": []}
+    if method == "messages.getSavedReactionTags":
+        return {"_": "messages.savedReactionTags", "tags": [], "hash": 1}
 
     # Harmless settings calls used by TWeb. Roof keeps these local/default for now
     # instead of making the UI fail with ROOF_METHOD_NOT_IMPLEMENTED.
