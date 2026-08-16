@@ -23,6 +23,7 @@ type PacksResponse = {
 };
 
 const TOKEN_RE = /\[\[roof-tgs:(pack_[a-f0-9]{12}):(emoji_[a-f0-9]{16})\]\]/gi;
+const STATUS_RE = /^roof-tgs:(pack_[a-f0-9]{12}):(emoji_[a-f0-9]{16})$/i;
 let packsPromise: Promise<PacksResponse> | undefined;
 
 function authHeaders(): HeadersInit {
@@ -55,6 +56,8 @@ export async function mountRoofPremiumEmojiAnimation(
   url: string,
   size = 44
 ): Promise<void> {
+  lottieLoader.getAnimation(container)?.remove();
+  container.classList.remove('roof-premium-emoji-failed');
   container.replaceChildren();
   container.style.width = `${size}px`;
   container.style.height = `${size}px`;
@@ -74,6 +77,26 @@ export async function mountRoofPremiumEmojiAnimation(
     container.textContent = '✦';
     console.warn('Roof premium emoji animation failed', error);
   }
+}
+
+export async function mountRoofPremiumEmojiStatus(
+  container: HTMLElement,
+  status: string,
+  size = 36
+): Promise<void> {
+  lottieLoader.getAnimation(container)?.remove();
+  container.replaceChildren();
+  const normalized = String(status || '').trim();
+  const match = STATUS_RE.exec(normalized);
+  if(match) {
+    container.classList.add('is-animated');
+    await mountRoofPremiumEmojiAnimation(container, itemUrl(match[1], match[2]), size);
+    return;
+  }
+  container.classList.remove('is-animated');
+  container.style.width = `${size}px`;
+  container.style.height = `${size}px`;
+  container.textContent = normalized || '✦';
 }
 
 function createAnimatedButton(item: RoofPremiumEmojiItem, onSelect: (item: RoofPremiumEmojiItem) => void) {
