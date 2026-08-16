@@ -108,7 +108,8 @@
 }
 .roof-premium-emoji-item:active { transform: scale(.92); }
 .roof-premium-emoji-animation,
-.roof-premium-emoji-inline {
+.roof-premium-emoji-inline,
+.roof-premium-status-preview {
   display: inline-grid;
   place-items: center;
   vertical-align: middle;
@@ -118,6 +119,21 @@
   width: 28px !important;
   height: 28px !important;
   margin: -5px 1px -6px;
+}
+.roof-premium-status-preview {
+  flex: 0 0 46px;
+  width: 46px !important;
+  height: 46px !important;
+  border: 1px solid color-mix(in srgb, var(--roof-accent) 34%, transparent);
+  border-radius: 14px;
+  color: #b89cff;
+  background: color-mix(in srgb, var(--roof-accent) 10%, transparent);
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  font-size: 25px;
+}
+.roof-premium-status-copy {
+  min-width: 0;
+  flex: 1;
 }
 .roof-premium-emoji-failed {
   color: #b89cff;
