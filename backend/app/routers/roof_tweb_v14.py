@@ -17,6 +17,7 @@ from app.websocket import manager
 router = APIRouter(prefix="/roof", tags=["roof-tweb"])
 
 USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{4,32}$")
+ROOF_REACTIONS = ["👍", "❤️", "🔥", "😂", "😁", "😢", "😮", "😡", "👏", "🎉", "💯", "🤝", "👀", "🤔", "🙏", "⚡", "💜", "🖤", "🚀", "👑"]
 
 
 def _clean_username(value: Any) -> str:
@@ -99,9 +100,20 @@ async def _update_profile(
 
 
 def _available_reactions() -> dict[str, Any]:
-    # TWeb can still use Unicode reactions through Roof's messages.sendReaction.
-    # No Telegram animation documents are returned because Roof is fully local.
+    # Full AvailableReaction objects normally point at Telegram animation documents.
+    # Roof stays local and serves picker data through recent/top Unicode reactions below.
     return {"_": "messages.availableReactions", "hash": 1, "reactions": []}
+
+
+def _reaction_list() -> dict[str, Any]:
+    return {
+        "_": "messages.reactions",
+        "hash": 2,
+        "reactions": [
+            {"_": "reactionEmoji", "emoticon": emoji}
+            for emoji in ROOF_REACTIONS
+        ],
+    }
 
 
 def _emoji_keywords(params: dict[str, Any]) -> dict[str, Any]:
@@ -143,7 +155,7 @@ async def invoke_v14(
     if method in {"messages.getEmojiStickers", "messages.getFeaturedEmojiStickers"}:
         return {"_": "messages.allStickers", "hash": 1, "sets": []}
     if method in {"messages.getRecentReactions", "messages.getTopReactions"}:
-        return {"_": "messages.reactions", "hash": 1, "reactions": []}
+        return _reaction_list()
     if method == "messages.getSavedReactionTags":
         return {"_": "messages.savedReactionTags", "tags": [], "hash": 1}
 
