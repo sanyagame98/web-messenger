@@ -5,9 +5,11 @@ services:
       SECRET_KEY: ${SECRET_KEY:-roof-local-development-secret-key-change-me}
       DATABASE_URL: sqlite:////app/data/roof.db
       CORS_ORIGINS: "*"
+      PREMIUM_EMOJI_PACKS_DIR: /app/premium-emoji-packs
     volumes:
       - roof_data:/app/data
       - roof_uploads:/app/uploads
+      - ./premium-emoji-packs:/app/premium-emoji-packs:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
@@ -23,8 +25,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      # Drop any premium emoji collection ZIPs here. Roof serves this folder
-      # locally and never uploads the packs to Telegram or another service.
+      # Keep the same folder visible to nginx too, useful for diagnostics/manual assets.
       - ./premium-emoji-packs:/usr/share/nginx/html/premium-emoji-packs:ro
     restart: unless-stopped
 
