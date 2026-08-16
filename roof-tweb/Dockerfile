@@ -17,7 +17,7 @@ RUN mkdir -p /src/tweb/public/assets/roof-emoji /src/tweb/src/lib/roof \
     && cp /src/telegram-emoji-list/emj.png /src/tweb/public/assets/roof-emoji/emj.png \
     && cp /src/telegram-emoji-list/LICENSE /src/tweb/public/assets/roof-emoji/GPL-3.0.txt \
     && python3 /src/roof/generate_telegram_emoji_atlas.py /src/telegram-emoji-list/atlas.htm /src/telegram-emoji-list/emoji_autocomplete.json /src/telegram-emoji-list/emj.png /src/tweb/src/lib/roof/telegramEmojiAtlas.ts \
-    && for f in /src/roof/roof-*.css; do cat "$f" >> /src/roof/roof-ui.css; done \
+    && for f in /src/roof/roof-*.css; do if [ "$f" != "/src/roof/roof-ui.css" ]; then cat "$f" >> /src/roof/roof-ui.css; fi; done \
     && python3 /src/roof/patch_tweb_safe.py /src/tweb \
     && python3 /src/roof/patch_telegram_emoji.py /src/tweb \
     && python3 /src/roof/patch_premium_emoji.py /src/tweb \
