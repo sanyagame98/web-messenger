@@ -109,7 +109,8 @@
 .roof-premium-emoji-item:active { transform: scale(.92); }
 .roof-premium-emoji-animation,
 .roof-premium-emoji-inline,
-.roof-premium-status-preview {
+.roof-premium-status-preview,
+.roof-peer-title-status {
   display: inline-grid;
   place-items: center;
   vertical-align: middle;
@@ -134,6 +135,32 @@
 .roof-premium-status-copy {
   min-width: 0;
   flex: 1;
+}
+.roof-peer-title-status {
+  flex: 0 0 20px;
+  width: 20px !important;
+  height: 20px !important;
+  margin-inline-start: 3px;
+  border-radius: 5px;
+  color: #b89cff;
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  font-size: 16px;
+  line-height: 1;
+  transform: translateY(1px);
+}
+.roof-peer-title-status.is-animated {
+  border-radius: 0;
+}
+.roof-peer-title-status.roof-premium-only-badge {
+  color: #b89cff;
+  font-size: 15px;
+  text-shadow: 0 0 10px rgba(155,124,255,.35);
+}
+.dialog-title .roof-peer-title-status,
+.chat-info .roof-peer-title-status,
+.peer-profile .roof-peer-title-status,
+.profile-name .roof-peer-title-status {
+  display: inline-grid !important;
 }
 .roof-premium-emoji-failed {
   color: #b89cff;
