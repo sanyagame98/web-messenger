@@ -17,14 +17,16 @@ COPY roof-tweb/roofTransport.ts /src/roof/roofTransport.ts
 COPY roof-tweb/SignInCard.tsx /src/roof/SignInCard.tsx
 COPY roof-tweb/SettingsRoof.tsx /src/roof/SettingsRoof.tsx
 COPY roof-tweb/roof-ui.css /src/roof/roof-ui.css
-RUN python3 /src/roof/patch_tweb_safe.py /src/tweb \
+COPY roof-tweb/roof-profile-editor.css /src/roof/roof-profile-editor.css
+RUN cat /src/roof/roof-profile-editor.css >> /src/roof/roof-ui.css \
+    && python3 /src/roof/patch_tweb_safe.py /src/tweb \
     && cp /src/roof/roof-ui.css /src/tweb/public/roof-ui.css \
     && python3 - <<'PY'
 from pathlib import Path
 path = Path('/src/tweb/index.html')
 text = path.read_text(encoding='utf-8')
 if '/roof-ui.css' not in text:
-    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v4">\n</head>')
+    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v5">\n</head>')
 path.write_text(text, encoding='utf-8')
 PY
 
@@ -35,8 +37,12 @@ FROM nginx:1.29-alpine
 COPY roof-tweb/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /src/tweb/dist/ /usr/share/nginx/html/
 COPY roof-tweb/roof-ui.css /usr/share/nginx/html/roof-ui.css
-RUN test -s /usr/share/nginx/html/roof-ui.css \
+COPY roof-tweb/roof-profile-editor.css /tmp/roof-profile-editor.css
+RUN cat /tmp/roof-profile-editor.css >> /usr/share/nginx/html/roof-ui.css \
+    && rm /tmp/roof-profile-editor.css \
+    && test -s /usr/share/nginx/html/roof-ui.css \
     && grep -q 'tgico-search' /usr/share/nginx/html/roof-ui.css \
     && grep -q 'roof-premium-card' /usr/share/nginx/html/roof-ui.css \
+    && grep -q 'roof-profile-editor' /usr/share/nginx/html/roof-ui.css \
     && grep -q '/roof-ui.css' /usr/share/nginx/html/index.html
 EXPOSE 80
