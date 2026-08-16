@@ -1,7 +1,7 @@
 import roofTransport from '@lib/roof/roofTransport';
 
 type RoofChatLike = {peerId?: any; container?: HTMLElement};
-type UploadItem = {file: File; url?: string; kind: 'photo' | 'video' | 'document'};
+type UploadItem = {file: File; url?: string; kind: 'photo' | 'video' | 'audio' | 'document'};
 
 const installed = new WeakSet<object>();
 let activeOverlay: HTMLElement | null = null;
@@ -25,6 +25,7 @@ function icon(name: 'attach' | 'close' | 'send' | 'file'): string {
 function classify(file: File): UploadItem['kind'] {
   if(file.type.startsWith('image/') && file.type !== 'image/gif') return 'photo';
   if(file.type.startsWith('video/')) return 'video';
+  if(file.type.startsWith('audio/')) return 'audio';
   return 'document';
 }
 
@@ -66,6 +67,24 @@ async function videoDetails(file: File): Promise<{w: number; h: number; duration
   });
 }
 
+async function audioDetails(file: File): Promise<{duration: number; title: string}> {
+  const title = (file.name || 'Audio').replace(/\.[^.]+$/, '');
+  if(!file.type.startsWith('audio/')) return {duration: 0, title};
+  return new Promise((resolve) => {
+    const audio = document.createElement('audio');
+    const url = URL.createObjectURL(file);
+    const done = () => {
+      const duration = Math.max(0, Math.round(audio.duration || 0));
+      URL.revokeObjectURL(url);
+      resolve({duration, title});
+    };
+    audio.preload = 'metadata';
+    audio.onloadedmetadata = done;
+    audio.onerror = () => { URL.revokeObjectURL(url); resolve({duration: 0, title}); };
+    audio.src = url;
+  });
+}
+
 async function uploadFile(file: File, onProgress: (value: number) => void): Promise<any> {
   const id = fileId();
   const chunkSize = 512 * 1024;
@@ -97,6 +116,15 @@ async function uploadFile(file: File, onProgress: (value: number) => void): Prom
       w: details.w || 1280,
       h: details.h || 720,
       pFlags: {supports_streaming: true}
+    });
+  } else if(kind === 'audio') {
+    const details = await audioDetails(file);
+    attributes.push({
+      _: 'documentAttributeAudio',
+      duration: details.duration,
+      title: details.title,
+      performer: '',
+      pFlags: {}
     });
   }
   return {
@@ -140,7 +168,7 @@ function openPreview(chat: RoofChatLike, files: File[]) {
     } else {
       const fileIcon = el('span', 'roof-media-file-icon'); fileIcon.innerHTML = icon('file');
       const name = el('span', 'roof-media-file-name'); name.textContent = item.file.name || 'Файл';
-      const size = el('span', 'roof-media-file-size'); size.textContent = formatBytes(item.file.size);
+      const size = el('span', 'roof-media-file-size'); size.textContent = item.kind === 'audio' ? `AUDIO · ${formatBytes(item.file.size)}` : formatBytes(item.file.size);
       card.append(fileIcon, name, size);
     }
     grid.append(card);
@@ -244,7 +272,7 @@ export function installRoofMediaUploader(chat: RoofChatLike): void {
     if(!input) return;
     attachButton = el('button', 'roof-media-attach');
     attachButton.type = 'button';
-    attachButton.title = 'Фото, видео или файл';
+    attachButton.title = 'Фото, видео, аудио или файл';
     attachButton.innerHTML = icon('attach');
     attachButton.onclick = (event) => { event.preventDefault(); event.stopPropagation(); fileInput.click(); };
     input.append(attachButton);
@@ -255,9 +283,8 @@ export function installRoofMediaUploader(chat: RoofChatLike): void {
 
   let depth = 0;
   const dropOverlay = el('div', 'roof-media-drop-overlay');
-  dropOverlay.innerHTML = `${icon('attach')}<strong>Перетащите сюда фото, видео или файлы</strong><span>До 20 файлов за раз</span>`;
+  dropOverlay.innerHTML = `${icon('attach')}<strong>Перетащите сюда фото, видео, аудио или файлы</strong><span>До 20 файлов за раз</span>`;
   container.append(dropOverlay);
-
   container.addEventListener('dragenter', (event) => {
     if(!event.dataTransfer?.types.includes('Files')) return;
     event.preventDefault(); depth++; dropOverlay.classList.add('show');
