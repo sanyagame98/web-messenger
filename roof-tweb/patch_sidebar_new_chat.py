@@ -21,17 +21,16 @@ if import_line not in text:
         raise SystemExit("[Roof sidebar patch] import marker missing")
     text = text.replace(marker, marker + import_line, 1)
 
-# Contacts tab is no longer used for starting a Roof direct conversation.
-text = text.replace("import {AppContactsTab} from '@components/solidJsTabs/tabs';\n", "", 1)
-
-# Replace only the New Private Chat action. Group and Channel continue to use
-# TWeb's mature native creation screens, while direct chat is Roof username-only.
+# TWeb currently has more than one contacts action in this sidebar file. Roof
+# must replace every direct-conversation entry point instead of only the first.
 old_contacts = """    const onContactsClick = () => {\n      closeTabsBefore(() => {\n        this.createTab(AppContactsTab).open();\n      });\n    };\n"""
 new_contacts = """    const onContactsClick = () => {\n      closeTabsBefore(() => {\n        openRoofNewChatSearch();\n      });\n    };\n"""
-if new_contacts not in text:
-    if old_contacts not in text:
-        raise SystemExit("[Roof sidebar patch] private chat action marker missing")
-    text = text.replace(old_contacts, new_contacts, 1)
+if old_contacts not in text and new_contacts not in text:
+    raise SystemExit("[Roof sidebar patch] private chat action marker missing")
+text = text.replace(old_contacts, new_contacts)
+
+# Once all native Contacts launchers are replaced, the import is obsolete.
+text = text.replace("import {AppContactsTab} from '@components/solidJsTabs/tabs';\n", "")
 
 # Make the three actions explicit Roof wording rather than inherited Telegram
 # lang-pack strings. regularText is supported by ButtonMenu options.
@@ -60,7 +59,7 @@ for needle in (
 ):
     if needle not in check:
         raise SystemExit(f"[Roof sidebar patch] verification failed: {needle}")
-if "AppContactsTab" in check:
-    raise SystemExit("[Roof sidebar patch] obsolete contacts tab import/reference remains")
+if "this.createTab(AppContactsTab).open()" in check:
+    raise SystemExit("[Roof sidebar patch] native Contacts launcher still remains")
 
 print("[Roof sidebar patch] username new-chat search and 3-action compose menu installed")
