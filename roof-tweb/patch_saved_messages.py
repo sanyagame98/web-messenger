@@ -1,20 +1,30 @@
-from pathlib import Path
+from __future__ import annotations
+
+import shutil
 import sys
+from pathlib import Path
 
-root = Path(sys.argv[1])
-chat = root / 'src/components/chat/chat.ts'
-text = chat.read_text(encoding='utf-8')
-needle = "import {installRoofVoiceRecorder} from '@lib/roof/RoofVoiceRecorder';"
-if needle in text and "saveRoofMessage" not in text:
-    text = text.replace(needle, needle + "\nimport {saveRoofMessage} from '@lib/roof/RoofSavedMessages';")
-chat.write_text(text, encoding='utf-8')
+ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "_build/tweb").resolve()
+OVERLAY = Path(__file__).resolve().parent
 
-# Add a Saved Messages shortcut to the sidebar menu using a small independent
-# DOM hook. This avoids coupling Roof storage to Telegram cloud Saved Messages.
-sidebar = root / 'src/components/sidebarLeft/index.ts'
-if sidebar.exists():
-    value = sidebar.read_text(encoding='utf-8')
-    marker = "import {openRoofNewChatSearch} from '@lib/roof/RoofNewChatSearch';"
-    if marker in value and 'openRoofSavedMessages' not in value:
-        value = value.replace(marker, marker + "\nimport {openRoofSavedMessages} from '@lib/roof/RoofSavedMessages';")
-    sidebar.write_text(value, encoding='utf-8')
+for name in ("RoofSavedMessages.ts", "RoofSavedMessagesHooks.ts"):
+    target = ROOT / "src/lib/roof" / name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(OVERLAY / name, target)
+
+path = ROOT / "src/components/chat/topbar.ts"
+text = path.read_text(encoding="utf-8")
+import_line = "import {installRoofSavedMessagesHooks} from '@lib/roof/RoofSavedMessagesHooks';\n"
+if import_line not in text:
+    marker = "import {installRoofVoiceRecorder} from '@lib/roof/RoofVoiceRecorder';\n"
+    if marker not in text:
+        raise SystemExit("[Roof saved patch] voice import marker missing")
+    text = text.replace(marker, marker + import_line, 1)
+install_line = "    installRoofSavedMessagesHooks(this.chat);\n"
+if install_line not in text:
+    marker = "    installRoofVoiceRecorder(this.chat);\n"
+    if marker not in text:
+        raise SystemExit("[Roof saved patch] voice install marker missing")
+    text = text.replace(marker, marker + install_line, 1)
+path.write_text(text, encoding="utf-8")
+print("[Roof saved patch] Saved Messages installed")
