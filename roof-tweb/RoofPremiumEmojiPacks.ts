@@ -1,4 +1,5 @@
 import lottieLoader from '@lib/lottie/lottieLoader';
+import roofTransport from '@lib/roof/roofTransport';
 
 export type RoofPremiumEmojiItem = {
   id: string;
@@ -22,9 +23,21 @@ type PacksResponse = {
   total_emojis: number;
 };
 
+export type RoofPeerProfileExtras = {
+  _: 'roof.peerProfileExtras';
+  user_id: number;
+  emoji_status: string;
+  premium: boolean;
+  premium_until?: string | null;
+  verified?: boolean;
+  is_self?: boolean;
+};
+
 const TOKEN_RE = /\[\[roof-tgs:(pack_[a-f0-9]{12}):(emoji_[a-f0-9]{16})\]\]/gi;
 const STATUS_RE = /^roof-tgs:(pack_[a-f0-9]{12}):(emoji_[a-f0-9]{16})$/i;
 let packsPromise: Promise<PacksResponse> | undefined;
+const peerExtrasCache = new Map<number, RoofPeerProfileExtras>();
+const peerExtrasPromises = new Map<number, Promise<RoofPeerProfileExtras>>();
 
 function authHeaders(): HeadersInit {
   let token = '';
@@ -45,6 +58,34 @@ export function getRoofPremiumEmojiPacks(force = false): Promise<PacksResponse> 
     packsPromise = undefined;
     throw error;
   });
+}
+
+export function invalidateRoofPeerProfileExtras(userId: number): void {
+  peerExtrasCache.delete(Number(userId));
+  peerExtrasPromises.delete(Number(userId));
+}
+
+export function getRoofPeerProfileExtras(userId: number, force = false): Promise<RoofPeerProfileExtras> {
+  const id = Number(userId);
+  if(!id) return Promise.reject(new Error('ROOF_USER_ID_REQUIRED'));
+  if(force) invalidateRoofPeerProfileExtras(id);
+  const cached = peerExtrasCache.get(id);
+  if(cached) return Promise.resolve(cached);
+  const pending = peerExtrasPromises.get(id);
+  if(pending) return pending;
+
+  const promise = Promise.resolve(
+    roofTransport.invoke<RoofPeerProfileExtras>('roof.getPeerProfileExtras', {user_id: id})
+  ).then((extras) => {
+    peerExtrasCache.set(id, extras);
+    peerExtrasPromises.delete(id);
+    return extras;
+  }).catch((error) => {
+    peerExtrasPromises.delete(id);
+    throw error;
+  });
+  peerExtrasPromises.set(id, promise);
+  return promise;
 }
 
 function itemUrl(packId: string, emojiId: string): string {
@@ -97,6 +138,41 @@ export async function mountRoofPremiumEmojiStatus(
   container.style.width = `${size}px`;
   container.style.height = `${size}px`;
   container.textContent = normalized || '✦';
+}
+
+export async function mountRoofPeerTitleStatus(
+  container: HTMLElement,
+  userId: number,
+  size = 20,
+  force = false
+): Promise<boolean> {
+  const extras = await getRoofPeerProfileExtras(userId, force);
+  const status = String(extras.emoji_status || '').trim();
+  container.dataset.roofPeerId = String(userId);
+  container.classList.add('roof-peer-title-status');
+
+  if(status) {
+    container.classList.remove('roof-premium-only-badge');
+    container.title = 'Roof Premium статус';
+    await mountRoofPremiumEmojiStatus(container, status, size);
+    return true;
+  }
+
+  lottieLoader.getAnimation(container)?.remove();
+  container.replaceChildren();
+  container.classList.remove('is-animated');
+  if(extras.premium) {
+    container.classList.add('roof-premium-only-badge');
+    container.style.width = `${size}px`;
+    container.style.height = `${size}px`;
+    container.textContent = '★';
+    container.title = 'Roof Premium';
+    return true;
+  }
+
+  container.classList.remove('roof-premium-only-badge');
+  container.removeAttribute('title');
+  return false;
 }
 
 function createAnimatedButton(item: RoofPremiumEmojiItem, onSelect: (item: RoofPremiumEmojiItem) => void) {
