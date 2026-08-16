@@ -21,17 +21,20 @@ COPY roof-tweb/patch_telegram_emoji.py /src/roof/patch_telegram_emoji.py
 COPY roof-tweb/patch_premium_emoji.py /src/roof/patch_premium_emoji.py
 COPY roof-tweb/patch_peer_premium_status.py /src/roof/patch_peer_premium_status.py
 COPY roof-tweb/patch_sidebar_new_chat.py /src/roof/patch_sidebar_new_chat.py
+COPY roof-tweb/patch_chat_settings.py /src/roof/patch_chat_settings.py
 COPY roof-tweb/generate_telegram_emoji_atlas.py /src/roof/generate_telegram_emoji_atlas.py
 COPY roof-tweb/roofTransport.ts /src/roof/roofTransport.ts
 COPY roof-tweb/SignInCard.tsx /src/roof/SignInCard.tsx
 COPY roof-tweb/SettingsRoof.tsx /src/roof/SettingsRoof.tsx
 COPY roof-tweb/RoofPremiumEmojiPacks.ts /src/roof/RoofPremiumEmojiPacks.ts
 COPY roof-tweb/RoofNewChatSearch.ts /src/roof/RoofNewChatSearch.ts
+COPY roof-tweb/RoofChatSettings.ts /src/roof/RoofChatSettings.ts
 COPY roof-tweb/roof-ui.css /src/roof/roof-ui.css
 COPY roof-tweb/roof-profile-editor.css /src/roof/roof-profile-editor.css
 COPY roof-tweb/roof-telegram-emoji.css /src/roof/roof-telegram-emoji.css
 COPY roof-tweb/roof-premium-emoji.css /src/roof/roof-premium-emoji.css
 COPY roof-tweb/roof-new-chat.css /src/roof/roof-new-chat.css
+COPY roof-tweb/roof-chat-settings.css /src/roof/roof-chat-settings.css
 
 RUN mkdir -p /src/tweb/public/assets/roof-emoji /src/tweb/src/lib/roof \
     && cp /src/telegram-emoji-list/emj.png /src/tweb/public/assets/roof-emoji/emj.png \
@@ -45,18 +48,20 @@ RUN mkdir -p /src/tweb/public/assets/roof-emoji /src/tweb/src/lib/roof \
     && cat /src/roof/roof-telegram-emoji.css >> /src/roof/roof-ui.css \
     && cat /src/roof/roof-premium-emoji.css >> /src/roof/roof-ui.css \
     && cat /src/roof/roof-new-chat.css >> /src/roof/roof-ui.css \
+    && cat /src/roof/roof-chat-settings.css >> /src/roof/roof-ui.css \
     && python3 /src/roof/patch_tweb_safe.py /src/tweb \
     && python3 /src/roof/patch_telegram_emoji.py /src/tweb \
     && python3 /src/roof/patch_premium_emoji.py /src/tweb \
     && python3 /src/roof/patch_peer_premium_status.py /src/tweb \
     && python3 /src/roof/patch_sidebar_new_chat.py /src/tweb \
+    && python3 /src/roof/patch_chat_settings.py /src/tweb \
     && cp /src/roof/roof-ui.css /src/tweb/public/roof-ui.css \
     && python3 - <<'PY'
 from pathlib import Path
 path = Path('/src/tweb/index.html')
 text = path.read_text(encoding='utf-8')
 if '/roof-ui.css' not in text:
-    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v9">\n</head>')
+    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v10">\n</head>')
 path.write_text(text, encoding='utf-8')
 PY
 
@@ -71,11 +76,13 @@ COPY roof-tweb/roof-profile-editor.css /tmp/roof-profile-editor.css
 COPY roof-tweb/roof-telegram-emoji.css /tmp/roof-telegram-emoji.css
 COPY roof-tweb/roof-premium-emoji.css /tmp/roof-premium-emoji.css
 COPY roof-tweb/roof-new-chat.css /tmp/roof-new-chat.css
+COPY roof-tweb/roof-chat-settings.css /tmp/roof-chat-settings.css
 RUN cat /tmp/roof-profile-editor.css >> /usr/share/nginx/html/roof-ui.css \
     && cat /tmp/roof-telegram-emoji.css >> /usr/share/nginx/html/roof-ui.css \
     && cat /tmp/roof-premium-emoji.css >> /usr/share/nginx/html/roof-ui.css \
     && cat /tmp/roof-new-chat.css >> /usr/share/nginx/html/roof-ui.css \
-    && rm /tmp/roof-profile-editor.css /tmp/roof-telegram-emoji.css /tmp/roof-premium-emoji.css /tmp/roof-new-chat.css \
+    && cat /tmp/roof-chat-settings.css >> /usr/share/nginx/html/roof-ui.css \
+    && rm /tmp/roof-profile-editor.css /tmp/roof-telegram-emoji.css /tmp/roof-premium-emoji.css /tmp/roof-new-chat.css /tmp/roof-chat-settings.css \
     && test -s /usr/share/nginx/html/roof-ui.css \
     && test -s /usr/share/nginx/html/assets/roof-emoji/emj.png \
     && test -s /usr/share/nginx/html/assets/roof-emoji/GPL-3.0.txt \
@@ -86,5 +93,6 @@ RUN cat /tmp/roof-profile-editor.css >> /usr/share/nginx/html/roof-ui.css \
     && grep -q 'roof-premium-emoji-panel' /usr/share/nginx/html/roof-ui.css \
     && grep -q 'roof-peer-title-status' /usr/share/nginx/html/roof-ui.css \
     && grep -q 'roof-new-chat-panel' /usr/share/nginx/html/roof-ui.css \
+    && grep -q 'roof-chat-settings-panel' /usr/share/nginx/html/roof-ui.css \
     && grep -q '/roof-ui.css' /usr/share/nginx/html/index.html
 EXPOSE 80
