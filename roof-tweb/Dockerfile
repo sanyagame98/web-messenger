@@ -10,61 +10,14 @@ ARG TWEB_COMMIT=e3730e10073c3fc02e1360e3513b70b176d6afec
 RUN git clone --filter=blob:none https://github.com/morethanwords/tweb.git /src/tweb \
     && cd /src/tweb \
     && git checkout "$TWEB_COMMIT"
-
-# Roof regular emoji source. The runtime stays fully local: the sprite, mapping
-# and GPL-3.0 license are copied into the final web bundle during this build.
 RUN git clone --depth=1 https://github.com/k3a/telegram-emoji-list.git /src/telegram-emoji-list
 
-COPY roof-tweb/patch_tweb.py /src/roof/patch_tweb.py
-COPY roof-tweb/patch_tweb_safe.py /src/roof/patch_tweb_safe.py
-COPY roof-tweb/patch_telegram_emoji.py /src/roof/patch_telegram_emoji.py
-COPY roof-tweb/patch_premium_emoji.py /src/roof/patch_premium_emoji.py
-COPY roof-tweb/patch_peer_premium_status.py /src/roof/patch_peer_premium_status.py
-COPY roof-tweb/patch_sidebar_new_chat.py /src/roof/patch_sidebar_new_chat.py
-COPY roof-tweb/patch_chat_settings.py /src/roof/patch_chat_settings.py
-COPY roof-tweb/patch_channel_comments.py /src/roof/patch_channel_comments.py
-COPY roof-tweb/patch_channel_post_tools.py /src/roof/patch_channel_post_tools.py
-COPY roof-tweb/patch_media_uploader.py /src/roof/patch_media_uploader.py
-COPY roof-tweb/patch_voice_recorder.py /src/roof/patch_voice_recorder.py
-COPY roof-tweb/generate_telegram_emoji_atlas.py /src/roof/generate_telegram_emoji_atlas.py
-COPY roof-tweb/roofTransport.ts /src/roof/roofTransport.ts
-COPY roof-tweb/SignInCard.tsx /src/roof/SignInCard.tsx
-COPY roof-tweb/SettingsRoof.tsx /src/roof/SettingsRoof.tsx
-COPY roof-tweb/RoofPremiumEmojiPacks.ts /src/roof/RoofPremiumEmojiPacks.ts
-COPY roof-tweb/RoofNewChatSearch.ts /src/roof/RoofNewChatSearch.ts
-COPY roof-tweb/RoofChatSettings.ts /src/roof/RoofChatSettings.ts
-COPY roof-tweb/RoofChannelComments.ts /src/roof/RoofChannelComments.ts
-COPY roof-tweb/RoofChannelPostTools.ts /src/roof/RoofChannelPostTools.ts
-COPY roof-tweb/RoofMediaUploader.ts /src/roof/RoofMediaUploader.ts
-COPY roof-tweb/RoofVoiceRecorder.ts /src/roof/RoofVoiceRecorder.ts
-COPY roof-tweb/roof-ui.css /src/roof/roof-ui.css
-COPY roof-tweb/roof-profile-editor.css /src/roof/roof-profile-editor.css
-COPY roof-tweb/roof-telegram-emoji.css /src/roof/roof-telegram-emoji.css
-COPY roof-tweb/roof-premium-emoji.css /src/roof/roof-premium-emoji.css
-COPY roof-tweb/roof-new-chat.css /src/roof/roof-new-chat.css
-COPY roof-tweb/roof-chat-settings.css /src/roof/roof-chat-settings.css
-COPY roof-tweb/roof-channel-comments.css /src/roof/roof-channel-comments.css
-COPY roof-tweb/roof-channel-post-tools.css /src/roof/roof-channel-post-tools.css
-COPY roof-tweb/roof-media-uploader.css /src/roof/roof-media-uploader.css
-COPY roof-tweb/roof-voice-recorder.css /src/roof/roof-voice-recorder.css
-
+COPY roof-tweb/ /src/roof/
 RUN mkdir -p /src/tweb/public/assets/roof-emoji /src/tweb/src/lib/roof \
     && cp /src/telegram-emoji-list/emj.png /src/tweb/public/assets/roof-emoji/emj.png \
     && cp /src/telegram-emoji-list/LICENSE /src/tweb/public/assets/roof-emoji/GPL-3.0.txt \
-    && python3 /src/roof/generate_telegram_emoji_atlas.py \
-        /src/telegram-emoji-list/atlas.htm \
-        /src/telegram-emoji-list/emoji_autocomplete.json \
-        /src/telegram-emoji-list/emj.png \
-        /src/tweb/src/lib/roof/telegramEmojiAtlas.ts \
-    && cat /src/roof/roof-profile-editor.css >> /src/roof/roof-ui.css \
-    && cat /src/roof/roof-telegram-emoji.css >> /src/roof/roof-ui.css \
-    && cat /src/roof/roof-premium-emoji.css >> /src/roof/roof-ui.css \
-    && cat /src/roof/roof-new-chat.css >> /src/roof/roof-ui.css \
-    && cat /src/roof/roof-chat-settings.css >> /src/roof/roof-ui.css \
-    && cat /src/roof/roof-channel-comments.css >> /src/roof/roof-ui.css \
-    && cat /src/roof/roof-channel-post-tools.css >> /src/roof/roof-ui.css \
-    && cat /src/roof/roof-media-uploader.css >> /src/roof/roof-ui.css \
-    && cat /src/roof/roof-voice-recorder.css >> /src/roof/roof-ui.css \
+    && python3 /src/roof/generate_telegram_emoji_atlas.py /src/telegram-emoji-list/atlas.htm /src/telegram-emoji-list/emoji_autocomplete.json /src/telegram-emoji-list/emj.png /src/tweb/src/lib/roof/telegramEmojiAtlas.ts \
+    && for f in /src/roof/roof-*.css; do cat "$f" >> /src/roof/roof-ui.css; done \
     && python3 /src/roof/patch_tweb_safe.py /src/tweb \
     && python3 /src/roof/patch_telegram_emoji.py /src/tweb \
     && python3 /src/roof/patch_premium_emoji.py /src/tweb \
@@ -75,13 +28,14 @@ RUN mkdir -p /src/tweb/public/assets/roof-emoji /src/tweb/src/lib/roof \
     && python3 /src/roof/patch_channel_post_tools.py /src/tweb \
     && python3 /src/roof/patch_media_uploader.py /src/tweb \
     && python3 /src/roof/patch_voice_recorder.py /src/tweb \
+    && python3 /src/roof/patch_saved_messages.py /src/tweb \
     && cp /src/roof/roof-ui.css /src/tweb/public/roof-ui.css \
     && python3 - <<'PY'
 from pathlib import Path
 path = Path('/src/tweb/index.html')
 text = path.read_text(encoding='utf-8')
 if '/roof-ui.css' not in text:
-    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v14">\n</head>')
+    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v15">\n</head>')
 path.write_text(text, encoding='utf-8')
 PY
 
@@ -91,40 +45,11 @@ RUN pnpm install --frozen-lockfile && pnpm run build
 FROM nginx:1.29-alpine
 COPY roof-tweb/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /src/tweb/dist/ /usr/share/nginx/html/
-COPY roof-tweb/roof-ui.css /usr/share/nginx/html/roof-ui.css
-COPY roof-tweb/roof-profile-editor.css /tmp/roof-profile-editor.css
-COPY roof-tweb/roof-telegram-emoji.css /tmp/roof-telegram-emoji.css
-COPY roof-tweb/roof-premium-emoji.css /tmp/roof-premium-emoji.css
-COPY roof-tweb/roof-new-chat.css /tmp/roof-new-chat.css
-COPY roof-tweb/roof-chat-settings.css /tmp/roof-chat-settings.css
-COPY roof-tweb/roof-channel-comments.css /tmp/roof-channel-comments.css
-COPY roof-tweb/roof-channel-post-tools.css /tmp/roof-channel-post-tools.css
-COPY roof-tweb/roof-media-uploader.css /tmp/roof-media-uploader.css
-COPY roof-tweb/roof-voice-recorder.css /tmp/roof-voice-recorder.css
-RUN cat /tmp/roof-profile-editor.css >> /usr/share/nginx/html/roof-ui.css \
-    && cat /tmp/roof-telegram-emoji.css >> /usr/share/nginx/html/roof-ui.css \
-    && cat /tmp/roof-premium-emoji.css >> /usr/share/nginx/html/roof-ui.css \
-    && cat /tmp/roof-new-chat.css >> /usr/share/nginx/html/roof-ui.css \
-    && cat /tmp/roof-chat-settings.css >> /usr/share/nginx/html/roof-ui.css \
-    && cat /tmp/roof-channel-comments.css >> /usr/share/nginx/html/roof-ui.css \
-    && cat /tmp/roof-channel-post-tools.css >> /usr/share/nginx/html/roof-ui.css \
-    && cat /tmp/roof-media-uploader.css >> /usr/share/nginx/html/roof-ui.css \
-    && cat /tmp/roof-voice-recorder.css >> /usr/share/nginx/html/roof-ui.css \
-    && rm /tmp/roof-profile-editor.css /tmp/roof-telegram-emoji.css /tmp/roof-premium-emoji.css /tmp/roof-new-chat.css /tmp/roof-chat-settings.css /tmp/roof-channel-comments.css /tmp/roof-channel-post-tools.css /tmp/roof-media-uploader.css /tmp/roof-voice-recorder.css \
-    && test -s /usr/share/nginx/html/roof-ui.css \
+COPY --from=build /src/roof/roof-ui.css /usr/share/nginx/html/roof-ui.css
+RUN test -s /usr/share/nginx/html/roof-ui.css \
     && test -s /usr/share/nginx/html/assets/roof-emoji/emj.png \
-    && test -s /usr/share/nginx/html/assets/roof-emoji/GPL-3.0.txt \
-    && grep -q 'tgico-search' /usr/share/nginx/html/roof-ui.css \
-    && grep -q 'roof-premium-card' /usr/share/nginx/html/roof-ui.css \
-    && grep -q 'roof-profile-editor' /usr/share/nginx/html/roof-ui.css \
-    && grep -q 'roof-telegram-emoji' /usr/share/nginx/html/roof-ui.css \
-    && grep -q 'roof-premium-emoji-panel' /usr/share/nginx/html/roof-ui.css \
-    && grep -q 'roof-peer-title-status' /usr/share/nginx/html/roof-ui.css \
-    && grep -q 'roof-new-chat-panel' /usr/share/nginx/html/roof-ui.css \
-    && grep -q 'roof-chat-settings-panel' /usr/share/nginx/html/roof-ui.css \
-    && grep -q 'roof-discussion-panel' /usr/share/nginx/html/roof-ui.css \
-    && grep -q 'roof-channel-post-meta' /usr/share/nginx/html/roof-ui.css \
-    && grep -q 'roof-media-preview-panel' /usr/share/nginx/html/roof-ui.css \
+    && grep -q 'roof-saved-panel' /usr/share/nginx/html/roof-ui.css \
     && grep -q 'roof-voice-recording' /usr/share/nginx/html/roof-ui.css \
+    && grep -q 'roof-media-preview-panel' /usr/share/nginx/html/roof-ui.css \
     && grep -q '/roof-ui.css' /usr/share/nginx/html/index.html
 EXPOSE 80
