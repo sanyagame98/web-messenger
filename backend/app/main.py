@@ -11,6 +11,7 @@ from app import (  # noqa: F401 - registers SQLAlchemy metadata
     chat_admin_models,
     chat_meta_models,
     discussion_models,
+    media_album_models,
     profile_meta_models,
 )
 from app.config import settings
@@ -20,7 +21,7 @@ from app.routers import chats as chats_router
 from app.routers import files as files_router
 from app.routers import messages as messages_router
 from app.routers import premium_emoji as premium_emoji_router
-from app.routers import roof_tweb_v22 as roof_tweb_router
+from app.routers import roof_tweb_v23 as roof_tweb_router
 from app.routers import users as users_router
 from app.websocket import websocket_endpoint
 
