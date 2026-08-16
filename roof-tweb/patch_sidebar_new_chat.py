@@ -21,6 +21,9 @@ if import_line not in text:
         raise SystemExit("[Roof sidebar patch] import marker missing")
     text = text.replace(marker, marker + import_line, 1)
 
+# Contacts tab is no longer used for starting a Roof direct conversation.
+text = text.replace("import {AppContactsTab} from '@components/solidJsTabs/tabs';\n", "", 1)
+
 # Replace only the New Private Chat action. Group and Channel continue to use
 # TWeb's mature native creation screens, while direct chat is Roof username-only.
 old_contacts = """    const onContactsClick = () => {\n      closeTabsBefore(() => {\n        this.createTab(AppContactsTab).open();\n      });\n    };\n"""
@@ -57,5 +60,7 @@ for needle in (
 ):
     if needle not in check:
         raise SystemExit(f"[Roof sidebar patch] verification failed: {needle}")
+if "AppContactsTab" in check:
+    raise SystemExit("[Roof sidebar patch] obsolete contacts tab import/reference remains")
 
 print("[Roof sidebar patch] username new-chat search and 3-action compose menu installed")
