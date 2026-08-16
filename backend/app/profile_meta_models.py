@@ -15,7 +15,9 @@ class UserProfileMeta(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
-    emoji_status: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    # Unicode statuses are tiny, while local animated statuses use a stable
+    # roof-tgs:pack_xxx:emoji_xxx identifier. Keep enough room for both.
+    emoji_status: Mapped[str] = mapped_column(String(96), nullable=False, default="")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
     )
