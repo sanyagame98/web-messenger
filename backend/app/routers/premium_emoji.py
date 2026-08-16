@@ -109,12 +109,9 @@ def list_packs(current_user: User = Depends(get_current_user)) -> dict[str, Any]
 
 
 @router.get("/packs/{pack_id}/items/{emoji_id}.tgs")
-def get_tgs(
-    pack_id: str,
-    emoji_id: str,
-    current_user: User = Depends(get_current_user),
-) -> StreamingResponse:
-    del current_user
+def get_tgs(pack_id: str, emoji_id: str) -> StreamingResponse:
+    # LottieLoader performs a plain fetch() without Roof's Authorization header.
+    # These assets live only on the user's localhost and use hashed pack/item ids.
     path = _find_pack(pack_id)
     member, payload = _find_member(path, pack_id, emoji_id)
     return StreamingResponse(
