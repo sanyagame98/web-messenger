@@ -19,6 +19,7 @@ COPY roof-tweb/patch_tweb.py /src/roof/patch_tweb.py
 COPY roof-tweb/patch_tweb_safe.py /src/roof/patch_tweb_safe.py
 COPY roof-tweb/patch_telegram_emoji.py /src/roof/patch_telegram_emoji.py
 COPY roof-tweb/patch_premium_emoji.py /src/roof/patch_premium_emoji.py
+COPY roof-tweb/patch_peer_premium_status.py /src/roof/patch_peer_premium_status.py
 COPY roof-tweb/generate_telegram_emoji_atlas.py /src/roof/generate_telegram_emoji_atlas.py
 COPY roof-tweb/roofTransport.ts /src/roof/roofTransport.ts
 COPY roof-tweb/SignInCard.tsx /src/roof/SignInCard.tsx
@@ -43,13 +44,14 @@ RUN mkdir -p /src/tweb/public/assets/roof-emoji /src/tweb/src/lib/roof \
     && python3 /src/roof/patch_tweb_safe.py /src/tweb \
     && python3 /src/roof/patch_telegram_emoji.py /src/tweb \
     && python3 /src/roof/patch_premium_emoji.py /src/tweb \
+    && python3 /src/roof/patch_peer_premium_status.py /src/tweb \
     && cp /src/roof/roof-ui.css /src/tweb/public/roof-ui.css \
     && python3 - <<'PY'
 from pathlib import Path
 path = Path('/src/tweb/index.html')
 text = path.read_text(encoding='utf-8')
 if '/roof-ui.css' not in text:
-    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v7">\n</head>')
+    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v8">\n</head>')
 path.write_text(text, encoding='utf-8')
 PY
 
@@ -75,5 +77,6 @@ RUN cat /tmp/roof-profile-editor.css >> /usr/share/nginx/html/roof-ui.css \
     && grep -q 'roof-profile-editor' /usr/share/nginx/html/roof-ui.css \
     && grep -q 'roof-telegram-emoji' /usr/share/nginx/html/roof-ui.css \
     && grep -q 'roof-premium-emoji-panel' /usr/share/nginx/html/roof-ui.css \
+    && grep -q 'roof-peer-title-status' /usr/share/nginx/html/roof-ui.css \
     && grep -q '/roof-ui.css' /usr/share/nginx/html/index.html
 EXPOSE 80
