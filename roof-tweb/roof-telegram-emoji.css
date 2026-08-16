@@ -1,0 +1,53 @@
+/* Regular Roof emoji rendered from k3a/telegram-emoji-list/emj.png (GPL-3.0). */
+.roof-telegram-emoji {
+  display: inline-block !important;
+  width: 1.22em !important;
+  height: 1.22em !important;
+  min-width: 1.22em !important;
+  margin: 0 .02em;
+  vertical-align: -.23em;
+  overflow: hidden;
+  white-space: nowrap;
+  color: transparent !important;
+  text-shadow: none !important;
+  font-size: 1em;
+  line-height: 1 !important;
+  background-image: url('/assets/roof-emoji/emj.png') !important;
+  background-repeat: no-repeat !important;
+  background-size: var(--roof-emoji-bg-width) var(--roof-emoji-bg-height) !important;
+  background-position: var(--roof-emoji-x-percent) var(--roof-emoji-y-percent) !important;
+  background-origin: content-box !important;
+  background-clip: content-box !important;
+  image-rendering: auto;
+  user-select: text;
+}
+
+/* Picker cells are larger, but use the exact same atlas/mapping as messages. */
+.super-emoji-regular .roof-telegram-emoji,
+.emoticons-dropdown .super-emoji-regular .roof-telegram-emoji,
+.emoji-dropdown .super-emoji-regular .roof-telegram-emoji {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  margin: 0 !important;
+  vertical-align: middle;
+}
+
+/* Large single-emoji messages keep the crisp atlas artwork instead of OS emoji. */
+.bubble.big-emoji .roof-telegram-emoji,
+.bubble .emoji-big.roof-telegram-emoji,
+.message-big-emoji .roof-telegram-emoji {
+  width: 2.55em !important;
+  height: 2.55em !important;
+  min-width: 2.55em !important;
+  vertical-align: -.55em;
+}
+
+/* Reactions also use the same renderer whenever TWeb wraps them as regular emoji. */
+.reaction .roof-telegram-emoji,
+.reaction-item .roof-telegram-emoji {
+  width: 1.15em !important;
+  height: 1.15em !important;
+  min-width: 1.15em !important;
+  vertical-align: -.2em;
+}
