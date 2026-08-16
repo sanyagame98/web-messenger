@@ -1,17 +1,15 @@
-import {createSignal, For, onMount} from 'solid-js';
+import {createSignal, For, onMount, Show} from 'solid-js';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {
   AppChatFoldersTab,
   AppDataAndStorageTab,
-  AppEditProfileTab,
   AppGeneralSettingsTab,
   AppKeyboardShortcutsTab,
   AppLanguageTab,
   AppNotificationsTab,
   AppPrivacyAndSecurityTab,
   AppSpeakersAndCameraTab,
-  AppStickersAndEmojiTab,
-  getEditProfileInitArgs
+  AppStickersAndEmojiTab
 } from '@components/solidJsTabs/tabs';
 import rootScope from '@lib/rootScope';
 import Row from '@components/rowTsx';
@@ -57,6 +55,15 @@ const Settings = () => {
   const [premium, setPremium] = createSignal(false);
   const [stars, setStars] = createSignal(0);
   const [status, setStatus] = createSignal('');
+  const [profileOpen, setProfileOpen] = createSignal(false);
+  const [profileName, setProfileName] = createSignal('');
+  const [profileUsername, setProfileUsername] = createSignal('');
+  const [profileBio, setProfileBio] = createSignal('');
+  const [profileAvatar, setProfileAvatar] = createSignal('');
+  const [profileEmail, setProfileEmail] = createSignal('');
+  const [profileSaving, setProfileSaving] = createSignal(false);
+  const [profileError, setProfileError] = createSignal('');
+  const [avatarUploading, setAvatarUploading] = createSignal(false);
 
   const editBtn = createRoofHeaderButton('edit', 'Редактировать профиль');
   const btnMenu = ButtonMenuToggle({
@@ -69,19 +76,93 @@ const Settings = () => {
     }]
   });
 
+  const applyProfile = (data: any) => {
+    setProfileName(String(data?.name || ''));
+    setProfileUsername(String(data?.username || ''));
+    setProfileBio(String(data?.bio || ''));
+    setProfileAvatar(String(data?.avatar_url || ''));
+    setProfileEmail(String(data?.email || ''));
+    setPremium(!!data?.premium);
+    setStars(Number(data?.stars || 0));
+    setStatus(String(data?.emoji_status || ''));
+  };
+
+  const loadProfile = () => (tab.managers.apiManager as any).invokeApi('roof.getOwnProfile', {})
+  .then((data: any) => applyProfile(data))
+  .catch((err: any) => setProfileError(String(err?.message || err || 'Не удалось загрузить профиль')));
+
+  const openProfile = () => {
+    setProfileError('');
+    setProfileOpen(true);
+    loadProfile();
+  };
+
+  const saveProfile = async() => {
+    setProfileSaving(true);
+    setProfileError('');
+    try {
+      const data = await (tab.managers.apiManager as any).invokeApi('roof.updateOwnProfile', {
+        name: profileName(),
+        username: profileUsername(),
+        bio: profileBio(),
+        avatar_url: profileAvatar()
+      });
+      applyProfile(data);
+      setProfileOpen(false);
+    } catch(err: any) {
+      setProfileError(String(err?.message || err || 'Не удалось сохранить профиль'));
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const uploadAvatar = async(event: Event) => {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if(!file) return;
+    if(file.size > 5 * 1024 * 1024) {
+      setProfileError('Аватар должен быть меньше 5 МБ');
+      input.value = '';
+      return;
+    }
+    setAvatarUploading(true);
+    setProfileError('');
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const token = localStorage.getItem('roof_access_token') || '';
+      const response = await fetch('/api/files/image', {
+        method: 'POST',
+        headers: token ? {Authorization: `Bearer ${token}`} : {},
+        body
+      });
+      if(!response.ok) throw new Error(await response.text());
+      const data = await response.json();
+      setProfileAvatar(String(data?.url || ''));
+    } catch(err: any) {
+      setProfileError(String(err?.message || err || 'Не удалось загрузить аватар'));
+    } finally {
+      setAvatarUploading(false);
+      input.value = '';
+    }
+  };
+
+  const chooseStatus = async(emoji: string) => {
+    try {
+      const data = await (tab.managers.apiManager as any).invokeApi('roof.updateEmojiStatus', {emoji});
+      applyProfile(data);
+    } catch(err: any) {
+      setProfileError(String(err?.message || err || 'Не удалось изменить статус'));
+    }
+  };
+
   onMount(() => {
     tab.container.classList.add('settings-container', 'roof-settings-container');
     tab.header.append(editBtn, btnMenu);
-    (tab.managers.apiManager as any).invokeApi('roof.getProfileExtras', {}).then((data: any) => {
-      setPremium(!!data?.premium);
-      setStars(Number(data?.stars || 0));
-      setStatus(String(data?.emoji_status || ''));
-    }).catch(() => {});
+    loadProfile();
   });
 
-  attachClickEvent(editBtn, () => {
-    tab.slider.createTab(AppEditProfileTab).open(getEditProfileInitArgs(true));
-  }, {listenerSetter: tab.listenerSetter});
+  attachClickEvent(editBtn, openProfile, {listenerSetter: tab.listenerSetter});
 
   const peerProfileElement = renderPeerProfile({
     peerId: rootScope.myId,
@@ -105,6 +186,10 @@ const Settings = () => {
       {peerProfileElement}
       <Section>
         <div class="profile-buttons roof-settings-list">
+          <Row clickable={openProfile}>
+            <RoofIcon name="edit" />
+            <Row.Title titleRight={<span>@{profileUsername()}</span>} titleRightSecondary>Редактировать профиль</Row.Title>
+          </Row>
           <For each={rows}>
             {(item) => (
               <Row clickable={() => tab.slider.createTab(item[2] as any).open()}>
@@ -125,7 +210,7 @@ const Settings = () => {
       </Section>
 
       <Section>
-        <div class="roof-premium-card">
+        <div class="roof-premium-card" onClick={openProfile}>
           <div class="roof-premium-mark"><RoofIcon name="star" premium /></div>
           <div class="roof-premium-copy">
             <div class="roof-premium-title">Roof Premium</div>
@@ -135,15 +220,88 @@ const Settings = () => {
           </div>
           <div class="roof-premium-state">{premium() ? 'Активен' : 'Roof'}</div>
         </div>
-        <Row clickable={() => tab.slider.createTab(AppEditProfileTab).open(getEditProfileInitArgs(true))}>
+        <Row clickable={openProfile}>
           <RoofIcon name="star" premium />
           <Row.Title titleRight={<span>{stars()}</span>} titleRightSecondary>Roof Stars</Row.Title>
         </Row>
-        <Row clickable={() => tab.slider.createTab(AppEditProfileTab).open(getEditProfileInitArgs(true))}>
+        <Row clickable={openProfile}>
           <RoofIcon name="emoji" />
           <Row.Title titleRight={<span class="roof-current-status">{status() || 'Добавить'}</span>} titleRightSecondary>Premium эмодзи-статус</Row.Title>
         </Row>
       </Section>
+
+      <Show when={profileOpen()}>
+        <div class="roof-profile-editor-backdrop" onClick={() => setProfileOpen(false)}>
+          <div class="roof-profile-editor" onClick={(event) => event.stopPropagation()}>
+            <div class="roof-profile-editor-header">
+              <button type="button" class="roof-profile-editor-close" onClick={() => setProfileOpen(false)}>×</button>
+              <div>
+                <div class="roof-profile-editor-title">Профиль Roof</div>
+                <div class="roof-profile-editor-subtitle">Имя, username, описание, аватар и статус</div>
+              </div>
+              <button type="button" class="roof-profile-editor-save" disabled={profileSaving()} onClick={saveProfile}>
+                {profileSaving() ? 'Сохранение…' : 'Готово'}
+              </button>
+            </div>
+
+            <div class="roof-profile-avatar-block">
+              <div class="roof-profile-avatar-preview">
+                <Show when={profileAvatar()} fallback={<span>{(profileName() || 'R').slice(0, 1).toUpperCase()}</span>}>
+                  <img src={profileAvatar()} alt="Аватар" />
+                </Show>
+              </div>
+              <label class="roof-profile-avatar-action">
+                {avatarUploading() ? 'Загрузка…' : 'Изменить фото'}
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={avatarUploading()} onChange={uploadAvatar} />
+              </label>
+              <Show when={profileAvatar()}>
+                <button type="button" class="roof-profile-avatar-remove" onClick={() => setProfileAvatar('')}>Удалить фото</button>
+              </Show>
+            </div>
+
+            <div class="roof-profile-fields">
+              <label class="roof-profile-field">
+                <span>Имя</span>
+                <input maxlength="64" value={profileName()} onInput={(event) => setProfileName(event.currentTarget.value)} placeholder="Ваше имя" />
+              </label>
+              <label class="roof-profile-field">
+                <span>Username</span>
+                <div class="roof-profile-username-wrap"><b>@</b><input maxlength="32" value={profileUsername()} onInput={(event) => setProfileUsername(event.currentTarget.value.replace(/^@+/, ''))} placeholder="username" /></div>
+                <small>4–32 символа: латиница, цифры и _</small>
+              </label>
+              <label class="roof-profile-field">
+                <span>О себе</span>
+                <textarea maxlength="280" rows="4" value={profileBio()} onInput={(event) => setProfileBio(event.currentTarget.value)} placeholder="Расскажите о себе" />
+                <small>{profileBio().length}/280</small>
+              </label>
+              <div class="roof-profile-readonly">
+                <span>Email</span>
+                <strong>{profileEmail()}</strong>
+              </div>
+            </div>
+
+            <div class="roof-profile-status-section">
+              <div class="roof-profile-status-head">
+                <div>
+                  <strong>Roof Premium статус</strong>
+                  <span>{premium() ? `Premium активен · ${stars()} Roof Stars` : `${stars()} Roof Stars`}</span>
+                </div>
+                <div class="roof-profile-premium-star">★</div>
+              </div>
+              <div class="roof-profile-status-grid">
+                <For each={['😂', '❤️', '🔥', '👍', '💯', '😁', '😎', '👑', '⚡', '💜', '🖤', '🚀']}>
+                  {(emoji) => <button type="button" class={`roof-profile-status-choice${status() === emoji ? ' is-selected' : ''}`} onClick={() => chooseStatus(emoji)}>{emoji}</button>}
+                </For>
+                <button type="button" class={`roof-profile-status-choice roof-profile-status-clear${!status() ? ' is-selected' : ''}`} onClick={() => chooseStatus('')}>×</button>
+              </div>
+            </div>
+
+            <Show when={profileError()}>
+              <div class="roof-profile-error">{profileError()}</div>
+            </Show>
+          </div>
+        </div>
+      </Show>
     </>
   );
 };
