@@ -1,0 +1,97 @@
+from __future__ import annotations
+
+import shutil
+import sys
+from pathlib import Path
+
+ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "_build/tweb").resolve()
+OVERLAY = Path(__file__).resolve().parent
+
+
+def fail(message: str) -> None:
+    raise SystemExit(f"[Roof premium emoji patch] {message}")
+
+
+source = OVERLAY / "RoofPremiumEmojiPacks.ts"
+target = ROOT / "src/lib/roof/RoofPremiumEmojiPacks.ts"
+if not source.is_file():
+    fail("RoofPremiumEmojiPacks.ts overlay is missing")
+target.parent.mkdir(parents=True, exist_ok=True)
+shutil.copy2(source, target)
+
+# Render persisted [[roof-tgs:...]] tokens as actual local TGS animations.
+rich_path = ROOT / "src/lib/richTextProcessor/wrapRichText.ts"
+rich = rich_path.read_text(encoding="utf-8")
+rich_import = "import {decorateRoofPremiumEmojiTokens} from '@lib/roof/RoofPremiumEmojiPacks';\n"
+if rich_import not in rich:
+    marker = "import formatRelativeTime from '@helpers/date/formatRelativeTime';\n"
+    if marker not in rich:
+        fail("wrapRichText import marker not found")
+    rich = rich.replace(marker, marker + rich_import, 1)
+
+normalize_marker = """  fragment.normalize();\n\n  return fragment;\n}"""
+normalize_replacement = """  if(!options.wrappingDraft) {\n    decorateRoofPremiumEmojiTokens(fragment);\n  }\n\n  fragment.normalize();\n\n  return fragment;\n}"""
+if normalize_replacement not in rich:
+    if normalize_marker not in rich:
+        fail("wrapRichText return marker not found")
+    rich = rich.replace(normalize_marker, normalize_replacement, 1)
+rich_path.write_text(rich, encoding="utf-8")
+
+# Add a star button next to the normal emoji button. Selection inserts a stable
+# Roof token into the composer; after send the renderer above turns it into TGS.
+input_path = ROOT / "src/components/chat/input.ts"
+chat = input_path.read_text(encoding="utf-8")
+chat_import = "import {openRoofPremiumEmojiPicker, roofPremiumEmojiMessageToken} from '@lib/roof/RoofPremiumEmojiPacks';\n"
+if chat_import not in chat:
+    marker = "import {insertRichTextAsHTML} from '@components/inputField';\n"
+    if marker not in chat:
+        fail("chat input import marker not found")
+    chat = chat.replace(marker, marker + chat_import, 1)
+
+button_marker = """    if(!this.excludeParts.emoticons) this.btnToggleEmoticons = this.createButtonIcon('smile toggle-emoticons', {noRipple: true});\n\n    this.btnSendGift ="""
+button_replacement = """    if(!this.excludeParts.emoticons) this.btnToggleEmoticons = this.createButtonIcon('smile toggle-emoticons', {noRipple: true});\n\n    const roofPremiumEmojiButton = this.createButtonIcon('', {noRipple: true});\n    roofPremiumEmojiButton.classList.add('roof-premium-emoji-toggle');\n    roofPremiumEmojiButton.textContent = '✦';\n    roofPremiumEmojiButton.title = 'Roof Premium Emoji';\n    attachClickEvent(roofPremiumEmojiButton, () => {\n      void openRoofPremiumEmojiPicker({\n        title: 'Roof Premium Emoji',\n        onSelect: async(item) => {\n          this.messageInput?.focus();\n          await insertRichTextAsHTML(this.messageInput, roofPremiumEmojiMessageToken(item), []);\n          this.updateSendBtn();\n        }\n      });\n    }, {listenerSetter: this.listenerSetter});\n\n    this.btnSendGift ="""
+if button_replacement not in chat:
+    if button_marker not in chat:
+        fail("chat premium button marker not found")
+    chat = chat.replace(button_marker, button_replacement, 1)
+
+append_marker = """      this.btnSendGift,\n      this.btnToggleEmoticons,\n      this.fileInput"""
+append_replacement = """      this.btnSendGift,\n      roofPremiumEmojiButton,\n      this.btnToggleEmoticons,\n      this.fileInput"""
+if append_replacement not in chat:
+    if append_marker not in chat:
+        fail("chat button append marker not found")
+    chat = chat.replace(append_marker, append_replacement, 1)
+input_path.write_text(chat, encoding="utf-8")
+
+# Add the same animated collection picker to profile emoji status settings.
+profile_path = ROOT / "src/components/sidebarLeft/tabs/editProfile.tsx"
+profile = profile_path.read_text(encoding="utf-8")
+profile_import = "import {openRoofPremiumEmojiPicker} from '@lib/roof/RoofPremiumEmojiPacks';\n"
+if profile_import not in profile:
+    first_import = profile.find("import ")
+    if first_import < 0:
+        fail("editProfile has no imports")
+    profile = profile[:first_import] + profile_import + profile[first_import:]
+
+status_grid_end = """        </div>\n      </Section>\n"""
+premium_status_button = """        </div>\n        <button\n          type=\"button\"\n          class=\"roof-open-premium-emoji-packs\"\n          onClick={() => void openRoofPremiumEmojiPicker({\n            title: 'Roof Premium статус',\n            onSelect: (item) => chooseRoofStatus(item.status_token)\n          })}\n        >\n          <span>✦</span> Анимированные Premium Emoji\n        </button>\n      </Section>\n"""
+# Anchor specifically after the Roof status grid generated by patch_tweb.py.
+anchor = """          </button>\n        </div>\n      </Section>\n"""
+replacement = """          </button>\n        </div>\n        <button\n          type=\"button\"\n          class=\"roof-open-premium-emoji-packs\"\n          onClick={() => void openRoofPremiumEmojiPicker({\n            title: 'Roof Premium статус',\n            onSelect: (item) => chooseRoofStatus(item.status_token)\n          })}\n        >\n          <span>✦</span> Анимированные Premium Emoji\n        </button>\n      </Section>\n"""
+if "roof-open-premium-emoji-packs" not in profile:
+    if anchor not in profile:
+        fail("profile Roof status section anchor not found")
+    profile = profile.replace(anchor, replacement, 1)
+profile_path.write_text(profile, encoding="utf-8")
+
+checks = {
+    rich_path: "decorateRoofPremiumEmojiTokens(fragment)",
+    input_path: "roofPremiumEmojiMessageToken(item)",
+    profile_path: "roof-open-premium-emoji-packs",
+    target: "openRoofPremiumEmojiPicker",
+}
+for path, needle in checks.items():
+    if needle not in path.read_text(encoding="utf-8"):
+        fail(f"verification failed for {path.name}: {needle}")
+
+print("[Roof premium emoji patch] ZIP packs, TGS picker, chat tokens and profile statuses installed")
