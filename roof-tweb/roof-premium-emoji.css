@@ -1,0 +1,167 @@
+.roof-premium-emoji-toggle {
+  color: #b89cff !important;
+  font-size: 20px !important;
+  font-weight: 800 !important;
+}
+.roof-premium-emoji-toggle:hover {
+  background: rgba(155,124,255,.12) !important;
+}
+.roof-premium-emoji-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0,0,0,.58);
+  backdrop-filter: blur(10px);
+}
+.roof-premium-emoji-panel {
+  width: min(620px, 96vw);
+  max-height: min(720px, 86vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--surface-color, #1f2126) 96%, #000 4%);
+  box-shadow: 0 24px 80px rgba(0,0,0,.48);
+}
+.roof-premium-emoji-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 58px;
+  padding: 8px 12px 8px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.roof-premium-emoji-heading {
+  font-size: 17px;
+  font-weight: 700;
+}
+.roof-premium-emoji-close {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  color: inherit;
+  background: transparent;
+  font-size: 28px;
+  cursor: pointer;
+}
+.roof-premium-emoji-close:hover { background: rgba(255,255,255,.07); }
+.roof-premium-emoji-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  scrollbar-width: none;
+}
+.roof-premium-emoji-tabs::-webkit-scrollbar { display: none; }
+.roof-premium-emoji-tab {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 17px;
+  color: inherit;
+  background: rgba(255,255,255,.035);
+  cursor: pointer;
+}
+.roof-premium-emoji-tab.active {
+  border-color: color-mix(in srgb, var(--roof-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--roof-accent) 18%, transparent);
+  color: #fff;
+}
+.roof-premium-emoji-content {
+  overflow-y: auto;
+  min-height: 260px;
+  padding: 12px;
+}
+.roof-premium-emoji-pack-meta {
+  padding: 2px 4px 10px;
+  opacity: .65;
+  font-size: 12px;
+}
+.roof-premium-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 7px;
+}
+.roof-premium-emoji-item {
+  aspect-ratio: 1;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  transition: transform .13s ease, background-color .13s ease, border-color .13s ease;
+}
+.roof-premium-emoji-item:hover {
+  transform: translateY(-1px) scale(1.04);
+  border-color: rgba(255,255,255,.06);
+  background: rgba(255,255,255,.065);
+}
+.roof-premium-emoji-item:active { transform: scale(.92); }
+.roof-premium-emoji-animation,
+.roof-premium-emoji-inline {
+  display: inline-grid;
+  place-items: center;
+  vertical-align: middle;
+  overflow: hidden;
+}
+.roof-premium-emoji-inline {
+  width: 28px !important;
+  height: 28px !important;
+  margin: -5px 1px -6px;
+}
+.roof-premium-emoji-failed {
+  color: #b89cff;
+  font-size: 24px;
+}
+.roof-premium-emoji-empty {
+  min-height: 230px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+}
+.roof-premium-emoji-empty span {
+  max-width: 360px;
+  opacity: .62;
+  font-size: 13px;
+}
+.roof-open-premium-emoji-packs {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 10px;
+  border: 1px solid color-mix(in srgb, var(--roof-accent) 34%, transparent);
+  border-radius: 13px;
+  color: #d9ceff;
+  background: color-mix(in srgb, var(--roof-accent) 11%, transparent);
+  font-weight: 650;
+  cursor: pointer;
+}
+.roof-open-premium-emoji-packs:hover {
+  background: color-mix(in srgb, var(--roof-accent) 17%, transparent);
+}
+.roof-open-premium-emoji-packs span {
+  color: #b89cff;
+  font-size: 18px;
+  margin-right: 5px;
+}
+@media (max-width: 560px) {
+  .roof-premium-emoji-overlay { padding: 0; place-items: end center; }
+  .roof-premium-emoji-panel {
+    width: 100%;
+    max-height: 76vh;
+    border-radius: 22px 22px 0 0;
+  }
+  .roof-premium-emoji-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
