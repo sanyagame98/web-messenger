@@ -74,8 +74,10 @@ def _remember_album(result: Any, db: Session) -> tuple[int, list[int]] | None:
     if len(ids) < 2:
         return None
     grouped_id = secrets.randbits(62) + 1
+    existing = _album_rows(set(ids), db)
     for position, message_id in enumerate(ids):
-        if db.get(MediaAlbumItem, message_id) is None:
+        row = existing.get(message_id)
+        if row is None:
             db.add(
                 MediaAlbumItem(
                     message_id=message_id,
@@ -83,11 +85,15 @@ def _remember_album(result: Any, db: Session) -> tuple[int, list[int]] | None:
                     position=position,
                 )
             )
+        else:
+            row.grouped_id = grouped_id
+            row.position = position
     db.commit()
     return grouped_id, ids
 
 
-async def _rebroadcast_album(grouped_id: int, ids: list[int], current_user: User, db: Session) -> None:
+async def _rebroadcast_album(grouped_id: int, ids: list[int], db: Session) -> None:
+    rows = _album_rows(set(ids), db)
     for message_id in ids:
         message = db.get(Message, message_id)
         if message is None:
@@ -95,9 +101,7 @@ async def _rebroadcast_album(grouped_id: int, ids: list[int], current_user: User
         chat = db.get(Chat, message.chat_id)
         if chat is None:
             continue
-        # TWeb may receive the original live update before grouped_id is persisted.
-        # A compact follow-up update lets the receiver regroup the already-rendered
-        # messages into one native album without reloading the dialog.
+        row = rows.get(message_id)
         await manager.broadcast_chat(
             chat.id,
             {
@@ -106,7 +110,7 @@ async def _rebroadcast_album(grouped_id: int, ids: list[int], current_user: User
                     "chat_id": chat.id,
                     "message_id": message_id,
                     "grouped_id": str(grouped_id),
-                    "position": next((row.position for row in _album_rows({message_id}, db).values()), 0),
+                    "position": row.position if row is not None else 0,
                 }
             },
         )
@@ -125,7 +129,7 @@ async def invoke_v23(
         if album is not None:
             grouped_id, ids = album
             result = _decorate_media(result, db)
-            await _rebroadcast_album(grouped_id, ids, current_user, db)
+            await _rebroadcast_album(grouped_id, ids, db)
             return result
 
     if payload.method in {
