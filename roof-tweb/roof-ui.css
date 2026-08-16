@@ -42,9 +42,54 @@
 .tgico-emoji:before { --roof-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16ZM8 8h2v2H8V8Zm6 0h2v2h-2V8Zm-6.5 5h9c-.6 2.1-2.25 3.5-4.5 3.5S8.1 15.1 7.5 13Z'/%3E%3C/svg%3E"); }
 .tgico-attach:before { --roof-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M8 12.5 14.5 6a3.5 3.5 0 1 1 5 5l-8 8a5.5 5.5 0 1 1-7.78-7.78l8-8 1.42 1.42-8 8a3.5 3.5 0 1 0 4.95 4.95l8-8a1.5 1.5 0 0 0-2.12-2.12L9.47 14a.75.75 0 1 0 1.06 1.06l5.5-5.5 1.41 1.42-5.5 5.5a2.75 2.75 0 0 1-3.89-3.89L8 12.5Z'/%3E%3C/svg%3E"); }
 
+/* Settings uses real inline SVGs instead of TWeb's icon font. This prevents tofu squares completely. */
+.roof-native-icon {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  display: inline-grid;
+  place-items: center;
+  margin-inline: 2px 18px;
+  color: var(--secondary-text-color, #aeb3bd);
+}
+.roof-native-icon svg,
+.roof-header-svg-button svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  fill: currentColor;
+}
+.roof-native-icon-premium {
+  color: #a88bff;
+  margin: 0;
+}
+.roof-settings-list .row {
+  min-height: 52px;
+}
+.roof-settings-list .row:hover {
+  background: rgba(255,255,255,.045);
+}
+.roof-header-svg-button {
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  color: var(--secondary-text-color, #aeb3bd);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.roof-header-svg-button:hover {
+  color: var(--primary-text-color, #fff);
+  background: rgba(255,255,255,.06);
+}
+.roof-current-status {
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  font-size: 18px;
+}
+
 /* Native Unicode emoji must stay color emoji instead of monochrome/tofu glyphs. */
 .emoji, .emoji-native, .input-message-input, .message, .peer-title,
-.roof-status-button, .roof-premium-subtitle {
+.roof-status-button, .roof-premium-subtitle, .roof-current-status {
   font-family: var(--font-regular), "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
 }
 
