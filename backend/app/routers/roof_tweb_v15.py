@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.deps import get_current_user
-from app.models import User
+from app.models import ChatMember, User
 from app.profile_meta_models import UserProfileMeta
 from app.routers import roof_tweb as legacy
 from app.routers import roof_tweb_v14 as v14
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/roof", tags=["roof-tweb"])
 
 
 ROOF_PREMIUM_EMOJI = ["😂", "❤️", "🔥", "👍", "💯", "😁", "😎", "👑", "⚡", "💜", "🖤", "🚀"]
+ROOF_TGS_STATUS_RE = re.compile(r"^roof-tgs:pack_[a-f0-9]{12}:emoji_[a-f0-9]{16}$")
 
 
 def _meta(user_id: int, db: Session) -> UserProfileMeta | None:
@@ -62,26 +64,40 @@ def _extras(current_user: User, db: Session) -> dict[str, Any]:
         "premium_until": current_user.premium_until.isoformat() if current_user.premium_until else None,
         "stars": current_user.stars,
         "available_statuses": ROOF_PREMIUM_EMOJI,
+        "animated_statuses_supported": True,
         "brand": "Roof",
     }
+
+
+async def _broadcast_emoji_status(current_user: User, emoji: str, db: Session) -> None:
+    chat_ids = list(
+        db.scalars(select(ChatMember.chat_id).where(ChatMember.user_id == current_user.id)).all()
+    )
+    user_ids = {current_user.id}
+    if chat_ids:
+        user_ids.update(
+            db.scalars(select(ChatMember.user_id).where(ChatMember.chat_id.in_(chat_ids))).all()
+        )
+    update = {
+        "_": "roofUpdateEmojiStatus",
+        "user_id": current_user.id,
+        "emoji": emoji,
+    }
+    for user_id in user_ids:
+        await manager.send_to_user(user_id, {"roof_update": update})
 
 
 async def _update_emoji_status(
     params: dict[str, Any], current_user: User, db: Session
 ) -> dict[str, Any]:
     emoji = str(params.get("emoji") or "").strip()
-    if emoji and emoji not in ROOF_PREMIUM_EMOJI:
-        emoji = ""
+    if emoji and emoji not in ROOF_PREMIUM_EMOJI and not ROOF_TGS_STATUS_RE.fullmatch(emoji):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "ROOF_EMOJI_STATUS_INVALID")
     row = _meta_or_create(current_user.id, db)
     row.emoji_status = emoji
     db.commit()
 
-    update = {
-        "_": "roofUpdateEmojiStatus",
-        "user_id": current_user.id,
-        "emoji": emoji,
-    }
-    await manager.send_to_user(current_user.id, {"roof_update": update})
+    await _broadcast_emoji_status(current_user, emoji, db)
     return _profile(current_user, db)
 
 
