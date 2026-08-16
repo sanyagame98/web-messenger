@@ -21,9 +21,6 @@ out_path = Path(sys.argv[4])
 atlas_text = atlas_path.read_text(encoding="utf-8", errors="replace")
 autocomplete = json.loads(autocomplete_path.read_text(encoding="utf-8"))
 
-# k3a's atlas uses a fixed 45x45px cell and lists one or more :alpha_codes:
-# next to each background-position. Keep the first code and aliases pointing to
-# the same cell so we can join the atlas with emoji_autocomplete.json.
 row_re = re.compile(
     r"background-position:\s*(-?\d+)px\s+(-?\d+)px.*?<strong>(.*?)</strong>",
     re.IGNORECASE | re.DOTALL,
@@ -50,11 +47,11 @@ unicode_to_position: dict[str, tuple[int, int]] = {}
 for input_code, data in autocomplete.items():
     if not isinstance(data, dict):
         continue
-    alpha_codes = []
+
+    alpha_codes: list[str] = []
     for raw in (data.get("alpha_code"), data.get("aliases")):
-        if not raw:
-            continue
-        alpha_codes.extend(code_re.findall(str(raw)))
+        if raw:
+            alpha_codes.extend(code_re.findall(str(raw)))
     position = next((alpha_to_position[code] for code in alpha_codes if code in alpha_to_position), None)
     if position is None:
         continue
@@ -62,7 +59,6 @@ for input_code, data in autocomplete.items():
     output_code = str(data.get("output") or input_code).lower()
     for key in {str(input_code).lower(), output_code}:
         unicode_to_position.setdefault(key, position)
-        # TWeb may omit FE0F in entity.unicode depending on source text.
         unicode_to_position.setdefault(key.replace("-fe0f", ""), position)
 
 if len(unicode_to_position) < 500:
@@ -74,11 +70,16 @@ mapping_json = json.dumps(
     separators=(",", ":"),
 )
 
+bg_width = (width / cell) * 100
+bg_height = (height / cell) * 100
+
 source = f"""// Generated from k3a/telegram-emoji-list (GPL-3.0).
 // Do not edit by hand. The source sprite is copied to /assets/roof-emoji/emj.png.
 const CELL = {cell};
 const ATLAS_WIDTH = {width};
 const ATLAS_HEIGHT = {height};
+const BG_WIDTH = '{bg_width:.8f}%';
+const BG_HEIGHT = '{bg_height:.8f}%';
 const MAP: Record<string, [number, number]> = {mapping_json};
 
 function normalizeUnicodeKey(value: string): string {{
@@ -95,10 +96,8 @@ export function applyRoofTelegramEmoji(element: HTMLElement, unicode: string, te
   element.dataset.roofEmojiUnicode = key;
   element.setAttribute('aria-label', text);
   element.setAttribute('role', 'img');
-  element.style.setProperty('--roof-emoji-x', String(x));
-  element.style.setProperty('--roof-emoji-y', String(y));
-  element.style.setProperty('--roof-emoji-cols', String(ATLAS_WIDTH / CELL));
-  element.style.setProperty('--roof-emoji-rows', String(ATLAS_HEIGHT / CELL));
+  element.style.setProperty('--roof-emoji-bg-width', BG_WIDTH);
+  element.style.setProperty('--roof-emoji-bg-height', BG_HEIGHT);
   element.style.setProperty('--roof-emoji-x-percent', String(ATLAS_WIDTH === CELL ? 0 : (x / (ATLAS_WIDTH - CELL)) * 100) + '%');
   element.style.setProperty('--roof-emoji-y-percent', String(ATLAS_HEIGHT === CELL ? 0 : (y / (ATLAS_HEIGHT - CELL)) * 100) + '%');
   return true;
