@@ -108,6 +108,34 @@ def _resolve_username(
     }
 
 
+def _peer_profile_extras(
+    params: dict[str, Any],
+    current_user: User,
+    db: Session,
+) -> dict[str, Any]:
+    raw_user_id = params.get("user_id")
+    if raw_user_id is None and isinstance(params.get("peer"), dict):
+        raw_user_id = params["peer"].get("user_id")
+    try:
+        user_id = int(raw_user_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "ROOF_USER_ID_REQUIRED") from None
+
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "ROOF_USER_NOT_FOUND")
+    row = v15._meta(user.id, db)
+    return {
+        "_": "roof.peerProfileExtras",
+        "user_id": user.id,
+        "emoji_status": row.emoji_status if row else "",
+        "premium": bool(user.is_premium),
+        "premium_until": user.premium_until.isoformat() if user.premium_until else None,
+        "verified": bool(user.is_verified),
+        "is_self": user.id == current_user.id,
+    }
+
+
 def _direct_dialog(chat: Chat, current_user: User, db: Session) -> dict[str, Any]:
     dialog, last = v8._dialog_for_chat(chat, current_user, db)
     other = _other_user(chat, current_user)
@@ -224,6 +252,8 @@ async def invoke_v16(
         return _search_username(params, current_user, db)
     if method == "contacts.resolveUsername":
         return _resolve_username(params, current_user, db)
+    if method == "roof.getPeerProfileExtras":
+        return _peer_profile_extras(params, current_user, db)
     if method == "roof.openDirectChat":
         return await _open_direct_chat(params, current_user, db)
     if method == "messages.readHistory":
