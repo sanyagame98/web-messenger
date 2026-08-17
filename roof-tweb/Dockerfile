@@ -29,13 +29,14 @@ RUN mkdir -p /src/tweb/public/assets/roof-emoji /src/tweb/src/lib/roof \
     && python3 /src/roof/patch_media_uploader.py /src/tweb \
     && python3 /src/roof/patch_voice_recorder.py /src/tweb \
     && python3 /src/roof/patch_saved_messages.py /src/tweb \
+    && python3 /src/roof/patch_typecheck_fixes.py /src/tweb \
     && cp /src/roof/roof-ui.css /src/tweb/public/roof-ui.css \
     && python3 - <<'PY'
 from pathlib import Path
 path = Path('/src/tweb/index.html')
 text = path.read_text(encoding='utf-8')
 if '/roof-ui.css' not in text:
-    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v15">\n</head>')
+    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v16">\n</head>')
 path.write_text(text, encoding='utf-8')
 PY
 
