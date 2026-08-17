@@ -36,7 +36,7 @@ from pathlib import Path
 path = Path('/src/tweb/index.html')
 text = path.read_text(encoding='utf-8')
 if '/roof-ui.css' not in text:
-    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v16">\n</head>')
+    text = text.replace('</head>', '  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v17">\n</head>')
 path.write_text(text, encoding='utf-8')
 PY
 
@@ -47,10 +47,17 @@ FROM nginx:1.29-alpine
 COPY roof-tweb/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /src/tweb/dist/ /usr/share/nginx/html/
 COPY --from=build /src/roof/roof-ui.css /usr/share/nginx/html/roof-ui.css
-RUN test -s /usr/share/nginx/html/roof-ui.css \
-    && test -s /usr/share/nginx/html/assets/roof-emoji/emj.png \
-    && grep -q 'roof-saved-panel' /usr/share/nginx/html/roof-ui.css \
-    && grep -q 'roof-voice-recording' /usr/share/nginx/html/roof-ui.css \
-    && grep -q 'roof-media-preview-panel' /usr/share/nginx/html/roof-ui.css \
-    && grep -q '/roof-ui.css' /usr/share/nginx/html/index.html
+# Keep Roof-owned runtime assets independent from Vite public-dir copying.
+COPY --from=build /src/tweb/public/assets/roof-emoji/ /usr/share/nginx/html/assets/roof-emoji/
+RUN set -eux; \
+    if ! grep -q '/roof-ui.css' /usr/share/nginx/html/index.html; then \
+      sed -i 's#</head>#  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v17">\n</head>#' /usr/share/nginx/html/index.html; \
+    fi; \
+    test -s /usr/share/nginx/html/roof-ui.css; \
+    test -s /usr/share/nginx/html/assets/roof-emoji/emj.png; \
+    grep -q 'roof-saved-panel' /usr/share/nginx/html/roof-ui.css; \
+    grep -q 'roof-voice-recording' /usr/share/nginx/html/roof-ui.css; \
+    grep -q 'roof-media-preview-panel' /usr/share/nginx/html/roof-ui.css; \
+    grep -q '/roof-ui.css' /usr/share/nginx/html/index.html; \
+    echo '[Roof Docker] nginx assets verified'
 EXPOSE 80
