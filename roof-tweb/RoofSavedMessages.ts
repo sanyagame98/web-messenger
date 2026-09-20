@@ -1,4 +1,5 @@
 import Icon from '@components/icon';
+import ButtonIcon from '@components/buttonIcon';
 import roofTransport from '@lib/roof/roofTransport';
 import {wrapTelegramEmojiText} from '@lib/roof/telegramEmojiAtlas';
 
@@ -26,12 +27,12 @@ export async function openRoofSavedMessages(): Promise<void> {
   const overlay = el('div', 'roof-saved-overlay');
   const panel = el('section', 'roof-saved-panel');
   const header = el('header', 'roof-saved-header');
-  const back = el('button', 'roof-saved-icon'); back.type = 'button'; back.innerHTML = icon('back'); back.onclick = close;
+  const back = ButtonIcon('back'); back.classList.add('roof-saved-icon'); back.onclick = close;
   const titleWrap = el('div', 'roof-saved-title');
   const title = el('strong'); title.textContent = 'Избранное';
   const subtitle = el('span'); subtitle.textContent = 'Saved Messages';
   titleWrap.append(title, subtitle);
-  const clear = el('button', 'roof-saved-icon'); clear.type = 'button'; clear.title = 'Очистить'; clear.innerHTML = icon('delete');
+  const clear = ButtonIcon('delete'); clear.classList.add('roof-saved-icon'); clear.title = 'Очистить';
   header.append(back, titleWrap, clear);
   const list = el('div', 'roof-saved-list');
   panel.append(header, list); overlay.append(panel); document.body.append(overlay); active = overlay;
