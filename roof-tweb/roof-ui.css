@@ -18,33 +18,6 @@
 .sidebar-tools-button, .btn-circle { transition: transform .16s ease, background-color .16s ease; }
 .sidebar-tools-button:active, .btn-circle:active { transform: scale(.94); }
 
-.roof-premium-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin: 4px 8px 10px;
-  padding: 16px;
-  border: 1px solid color-mix(in srgb, var(--roof-accent) 38%, transparent);
-  border-radius: 18px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--roof-accent) 18%, transparent), rgba(255,255,255,.025));
-}
-.roof-premium-mark {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 42px;
-  border-radius: 14px;
-  font-size: 24px;
-  color: #fff;
-  background: linear-gradient(145deg, #9b7cff, #6f4de8);
-  box-shadow: 0 8px 24px rgba(123, 88, 238, .28);
-}
-.roof-premium-copy { min-width: 0; flex: 1; }
-.roof-premium-title { font-size: 16px; font-weight: 700; }
-.roof-premium-subtitle { margin-top: 3px; font-size: 13px; opacity: .68; }
-.roof-premium-state { color: var(--roof-accent); font-size: 13px; font-weight: 600; }
-
 .roof-profile-premium-head {
   display: flex;
   align-items: center;
