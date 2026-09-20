@@ -207,6 +207,31 @@ def patch_native_premium() -> None:
         1,
     )
 
+    option_block = """    this.option = this.props.premiumPromo.period_options[0];
+    const shortestOption = this.props.premiumPromo.period_options.slice().sort((a, b) => a.months - b.months)[0];
+    this.wrapCurrency = (amount) => paymentsWrapCurrencyAmount(amount, shortestOption.currency, false, true, true);"""
+    option_replacement = """    this.option = this.props.premiumPromo.period_options[0];
+    if(this.option) {
+      const shortestOption = this.props.premiumPromo.period_options.slice().sort((a, b) => a.months - b.months)[0];
+      this.wrapCurrency = (amount) => paymentsWrapCurrencyAmount(amount, shortestOption.currency, false, true, true);
+    } else {
+      this.wrapCurrency = () => '';
+    }"""
+    if option_block not in text:
+        fail("native Premium period option block not found")
+    text = text.replace(option_block, option_replacement, 1)
+
+    action_marker = """  private createActionButton() {
+    if(this.props.type === 'gift') {"""
+    action_replacement = """  private createActionButton() {
+    if(this.props.type === 'premium' && !this.props.premiumPromo.period_options?.length) {
+      return;
+    }
+    if(this.props.type === 'gift') {"""
+    if action_marker not in text:
+        fail("native Premium action-button marker not found")
+    text = text.replace(action_marker, action_replacement, 1)
+
     old_buy = """  public buyPremium() {
     this.close(() => {
       appImManager.openUrl(this.option.bot_url);
@@ -226,6 +251,38 @@ def patch_native_premium() -> None:
         fail("native Premium purchase method not found")
     text = text.replace(old_buy, new_buy, 1)
     path.write_text(text, encoding="utf-8")
+
+    promo_path = ROOT / "src/components/premium/promoSlideTab.ts"
+    promo = promo_path.read_text(encoding="utf-8")
+    promo_marker = "      options.type === 'premium' && !options.isPremiumActive && this.createOptionsForm(),"
+    promo_replacement = "      options.type === 'premium' && !options.isPremiumActive && !!options.premiumPromo.period_options?.length && this.createOptionsForm(),"
+    if promo_marker not in promo:
+        fail("native Premium options form marker not found")
+    promo_path.write_text(promo.replace(promo_marker, promo_replacement, 1), encoding="utf-8")
+
+    carousel_path = ROOT / "src/components/premium/featuresCarousel.ts"
+    carousel = carousel_path.read_text(encoding="utf-8")
+    switch_marker = """      switch(feature.type) {
+        case 'limits': {"""
+    fallback = """      if(!feature.videoPosition && !feature.type && !slideTopSectionContainer.childElementCount) {
+        const title = document.createElement('div');
+        title.classList.add('carousel-item-content-title');
+        title.append(i18n(feature.titleLangKey, feature.titleLangArgs));
+        const subtitle = document.createElement('div');
+        subtitle.classList.add('carousel-item-content-subtitle');
+        subtitle.append(i18n(feature.subtitleLangKey, feature.subtitleLangArgs));
+        const icon = Icon(feature.icon, 'device-frame-preload-icon');
+        const body = document.createElement('div');
+        body.classList.add('carousel-item-content-bottom-section');
+        body.append(title, subtitle);
+        slideTopSectionContainer.append(icon, body);
+      }
+
+      switch(feature.type) {
+        case 'limits': {"""
+    if switch_marker not in carousel:
+        fail("native Premium feature carousel marker not found")
+    carousel_path.write_text(carousel.replace(switch_marker, fallback, 1), encoding="utf-8")
 
 def strip_entry_branding() -> None:
     vite_path = ROOT / "vite.config.ts"
