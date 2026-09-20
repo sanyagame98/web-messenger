@@ -44,34 +44,7 @@ replace_once(
     "channel post schedule",
 )
 
-# 4. Same TS7 callback rule for username search debounce.
-new_chat = ROOT / "src/lib/roof/RoofNewChatSearch.ts"
-replace_once(
-    new_chat,
-    "timer = window.setTimeout(() => void search(), 180);",
-    "timer = window.setTimeout((): void => { void search(); }, 180);",
-    "new chat search debounce",
-)
-
-# 5. Saved Messages should not import a helper that the generated atlas does
-# not expose. Unicode is still preserved; normal chat rendering keeps the local
-# Telegram-style atlas renderer.
-saved = ROOT / "src/lib/roof/RoofSavedMessages.ts"
-saved_text = saved.read_text(encoding="utf-8")
-saved_text = saved_text.replace(
-    "import {wrapTelegramEmojiText} from '@lib/roof/telegramEmojiAtlas';\n",
-    "",
-    1,
-)
-old_render = """function renderText(node: HTMLElement, text: string) {\n  try { node.append(wrapTelegramEmojiText(text || '')); }\n  catch { node.textContent = text || ''; }\n}\n"""
-new_render = """function renderText(node: HTMLElement, text: string): void {\n  node.textContent = text || '';\n}\n"""
-if new_render not in saved_text:
-    if old_render not in saved_text:
-        raise SystemExit("[Roof typecheck patch] marker missing: Saved Messages renderer")
-    saved_text = saved_text.replace(old_render, new_render, 1)
-saved.write_text(saved_text, encoding="utf-8")
-
-# 6-7. The generated atlas dimensions are numeric constants. Explicit number
+# 4-6. The generated atlas dimensions are numeric constants. Explicit number
 # annotations prevent TS from treating 1800/2475/45 as disjoint literal types
 # in the defensive denominator checks.
 atlas = ROOT / "src/lib/roof/telegramEmojiAtlas.ts"
@@ -92,12 +65,10 @@ checks = {
     title_icons: "(peer as any)._ !== 'user'",
     edit_profile: "createEffect((): void => { void mountRoofPremiumEmojiStatus",
     post_tools: "window.setTimeout((): void => { void decorateBubbles",
-    new_chat: "window.setTimeout((): void => { void search(); }, 180)",
-    saved: "function renderText(node: HTMLElement, text: string): void",
     atlas: "const ATLAS_WIDTH: number = 1800;",
 }
 for path, needle in checks.items():
     if needle not in path.read_text(encoding="utf-8"):
         raise SystemExit(f"[Roof typecheck patch] verification failed: {path.name}: {needle}")
 
-print("[Roof typecheck patch] fixed 7 Roof/TWeb TypeScript compatibility errors")
+print("[Roof typecheck patch] fixed Roof/TWeb TypeScript compatibility errors")
