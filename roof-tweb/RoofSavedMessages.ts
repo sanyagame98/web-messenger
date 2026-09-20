@@ -1,63 +1,95 @@
-import Icon from '@components/icon';
 import ButtonIcon from '@components/buttonIcon';
+import Icon from '@components/icon';
+import Row from '@components/row';
+import Section from '@components/section';
+import SliderSuperTab from '@components/sliderTab';
+import appSidebarLeft from '@components/sidebarLeft';
 import roofTransport from '@lib/roof/roofTransport';
 import {wrapTelegramEmojiText} from '@lib/roof/telegramEmojiAtlas';
 
-let active: HTMLElement | null = null;
-
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if(cls) node.className = cls;
+function renderText(text: string): HTMLElement {
+  const node = document.createElement('span');
+  try {
+    node.append(wrapTelegramEmojiText(text || ''));
+  } catch {
+    node.textContent = text || '';
+  }
   return node;
 }
 
-function icon(name: 'back' | 'delete' | 'savedmessages') {
-  return Icon(name).outerHTML;
-}
+class RoofSavedMessagesTab extends SliderSuperTab {
+  private rows: HTMLElement;
+  private empty: HTMLElement;
+  private clearButton: HTMLButtonElement;
 
-function close() { active?.remove(); active = null; }
+  public async init() {
+    this.title.textContent = 'Избранное';
+    this.container.classList.add('roof-native-saved-tab');
 
-function renderText(node: HTMLElement, text: string) {
-  try { node.append(wrapTelegramEmojiText(text || '')); }
-  catch { node.textContent = text || ''; }
-}
+    this.clearButton = ButtonIcon('delete');
+    this.clearButton.title = 'Очистить Избранное';
+    this.header.append(this.clearButton);
+    this.listenerSetter.add(this.clearButton)('click', () => void this.clear());
 
-export async function openRoofSavedMessages(): Promise<void> {
-  close();
-  const overlay = el('div', 'roof-saved-overlay');
-  const panel = el('section', 'roof-saved-panel');
-  const header = el('header', 'roof-saved-header');
-  const back = ButtonIcon('back'); back.classList.add('roof-saved-icon'); back.onclick = close;
-  const titleWrap = el('div', 'roof-saved-title');
-  const title = el('strong'); title.textContent = 'Избранное';
-  const subtitle = el('span'); subtitle.textContent = 'Saved Messages';
-  titleWrap.append(title, subtitle);
-  const clear = ButtonIcon('delete'); clear.classList.add('roof-saved-icon'); clear.title = 'Очистить';
-  header.append(back, titleWrap, clear);
-  const list = el('div', 'roof-saved-list');
-  panel.append(header, list); overlay.append(panel); document.body.append(overlay); active = overlay;
+    this.rows = document.createElement('div');
+    this.rows.className = 'roof-native-rows';
 
-  const load = async() => {
-    list.replaceChildren();
+    this.empty = document.createElement('div');
+    this.empty.className = 'roof-native-empty';
+    this.empty.append(
+      Icon('savedmessages', 'roof-native-empty-icon'),
+      Object.assign(document.createElement('strong'), {textContent: 'Здесь пока ничего нет'}),
+      Object.assign(document.createElement('span'), {
+        textContent: 'Сохраняй важные сообщения, файлы, фото и ссылки — они появятся здесь.'
+      })
+    );
+
+    this.scrollable.append(this.rows, this.empty);
+    await this.load();
+  }
+
+  private async load() {
     const result = await roofTransport.invoke<any>('roof.getSavedMessages', {limit: 200});
     const messages = result?.messages || [];
-    if(!messages.length) {
-      const empty = el('div', 'roof-saved-empty');
-      empty.innerHTML = `${icon('savedmessages')}<strong>Здесь пока ничего нет</strong><span>Сохраняй важные сообщения, файлы, фото и ссылки — они появятся здесь.</span>`;
-      list.append(empty); return;
-    }
+    this.rows.replaceChildren();
+    this.empty.classList.toggle('hide', !!messages.length);
+    this.clearButton.classList.toggle('hide', !messages.length);
+    if(!messages.length) return;
+
+    const section = new Section();
     messages.forEach((message: any) => {
-      const row = el('article', 'roof-saved-message');
-      const body = el('div', 'roof-saved-message-body'); renderText(body, String(message.message || ''));
-      const meta = el('div', 'roof-saved-message-meta');
-      const source = el('span'); source.textContent = `Чат #${message.roof_source_chat_id || ''}`;
-      const remove = el('button', 'roof-saved-remove'); remove.type = 'button'; remove.textContent = 'Убрать';
-      remove.onclick = async() => { await roofTransport.invoke('roof.unsaveMessage', {message_id: message.id}); row.remove(); if(!list.children.length) void load(); };
-      meta.append(source, remove); row.append(body, meta); list.append(row);
+      const remove = ButtonIcon('delete');
+      remove.title = 'Убрать из Избранного';
+      const row = new Row({
+        title: renderText(String(message.message || 'Сообщение')),
+        subtitle: `Чат #${message.roof_source_chat_id || ''}`,
+        rightContent: remove,
+        noWrap: true
+      });
+      const media = row.createMedia('small');
+      media.append(Icon('savedmessages'));
+      media.classList.add('roof-native-saved-media');
+      this.listenerSetter.add(remove)('click', async(event) => {
+        event.stopPropagation();
+        await roofTransport.invoke('roof.unsaveMessage', {message_id: message.id});
+        await this.load();
+      });
+      section.content.append(row.container);
     });
-  };
-  clear.onclick = async() => { if(!confirm('Очистить Избранное?')) return; await roofTransport.invoke('roof.clearSavedMessages', {}); await load(); };
-  await load();
+    this.rows.append(section.container);
+  }
+
+  private async clear() {
+    if(!confirm('Очистить Избранное?')) return;
+    await roofTransport.invoke('roof.clearSavedMessages', {});
+    await this.load();
+  }
+}
+
+export function openRoofSavedMessages(): void {
+  appSidebarLeft.closeTabsBefore(() => {
+    void appSidebarLeft.createTab(RoofSavedMessagesTab).open();
+  });
 }
 
 export async function saveRoofMessage(messageId: number): Promise<void> {
