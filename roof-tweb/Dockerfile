@@ -66,9 +66,10 @@ RUN set -eux; \
     test -s /usr/share/nginx/html/assets/fonts/tgico.svg; \
     test -s /usr/share/nginx/html/assets/img/premium-star.png; \
     test -s /usr/share/nginx/html/assets/img/premium-star@2x.png; \
-    grep -q 'roof-saved-panel' /usr/share/nginx/html/roof-ui.css; \
+    grep -q 'roof-native-saved-tab' /usr/share/nginx/html/roof-ui.css; \
     grep -q 'roof-voice-recording' /usr/share/nginx/html/roof-ui.css; \
     grep -q 'roof-media-preview-panel' /usr/share/nginx/html/roof-ui.css; \
     grep -q '/roof-ui.css' /usr/share/nginx/html/index.html; \
-    echo '[Roof Docker] nginx assets verified'
+    ! grep -q 'data:image/svg+xml' /usr/share/nginx/html/roof-ui.css; \
+    echo '[Roof Docker] native TWeb assets verified'
 EXPOSE 80
