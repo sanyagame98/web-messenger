@@ -1,3 +1,4 @@
+import Icon from '@components/icon';
 import roofTransport from '@lib/roof/roofTransport';
 
 type RoofChatLike = {peerId?: any; container?: HTMLElement};
@@ -12,14 +13,8 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string): 
   return node;
 }
 
-function icon(name: 'attach' | 'close' | 'send' | 'file'): string {
-  const paths = {
-    attach: '<path d="M21.4 11.6l-8.9 8.9a6 6 0 0 1-8.5-8.5l9.6-9.6a4 4 0 1 1 5.7 5.7l-9.7 9.7a2 2 0 1 1-2.8-2.8l8.9-8.9"/>',
-    close: '<path d="M6 6l12 12M18 6L6 18"/>',
-    send: '<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>',
-    file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/>'
-  };
-  return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]}</svg>`;
+function icon(name: 'attach' | 'close' | 'send' | 'document'): string {
+  return Icon(name).outerHTML;
 }
 
 function classify(file: File): UploadItem['kind'] {
@@ -166,7 +161,7 @@ function openPreview(chat: RoofChatLike, files: File[]) {
       const video = el('video'); video.src = item.url; video.muted = true; video.preload = 'metadata'; card.append(video);
       const badge = el('span', 'roof-media-video-badge'); badge.textContent = 'VIDEO'; card.append(badge);
     } else {
-      const fileIcon = el('span', 'roof-media-file-icon'); fileIcon.innerHTML = icon('file');
+      const fileIcon = el('span', 'roof-media-file-icon'); fileIcon.innerHTML = icon('document');
       const name = el('span', 'roof-media-file-name'); name.textContent = item.file.name || 'Файл';
       const size = el('span', 'roof-media-file-size'); size.textContent = item.kind === 'audio' ? `AUDIO · ${formatBytes(item.file.size)}` : formatBytes(item.file.size);
       card.append(fileIcon, name, size);
