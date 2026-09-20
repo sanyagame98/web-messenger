@@ -1,5 +1,7 @@
 import Icon from '@components/icon';
 import ButtonIcon from '@components/buttonIcon';
+import SliderSuperTab from '@components/sliderTab';
+import appSidebarRight from '@components/sidebarRight';
 import roofTransport from '@lib/roof/roofTransport';
 
 type AdminRights = Record<string, boolean>;
@@ -101,32 +103,16 @@ async function uploadAvatar(file: File): Promise<string> {
   return String(data.url || '');
 }
 
-export async function openRoofChatSettings(chatId: number): Promise<void> {
-  document.querySelector('.roof-chat-settings-overlay')?.remove();
+class RoofChatSettingsTab extends SliderSuperTab {
+  public async init(chatId: number): Promise<void> {
+    this.title.textContent = 'Настройки';
+    this.container.classList.add('roof-native-chat-settings-tab');
 
-  const overlay = el('div', 'roof-chat-settings-overlay');
-  const panel = el('div', 'roof-chat-settings-panel');
-  overlay.append(panel);
-  document.body.append(overlay);
+    const body = el('div', 'roof-chat-settings-body');
+    body.innerHTML = '<div class="roof-chat-settings-loading">Загрузка…</div>';
+    this.scrollable.append(body);
 
-  const header = el('div', 'roof-chat-settings-header');
-  const close = ButtonIcon('close');
-  close.classList.add('roof-chat-settings-icon');
-  close.onclick = () => overlay.remove();
-  const title = el('div', 'roof-chat-settings-heading');
-  title.textContent = 'Настройки Roof';
-  header.append(close, title);
-  panel.append(header);
-
-  const body = el('div', 'roof-chat-settings-body');
-  body.innerHTML = '<div class="roof-chat-settings-loading">Загрузка…</div>';
-  panel.append(body);
-
-  overlay.addEventListener('click', (event) => {
-    if(event.target === overlay) overlay.remove();
-  });
-
-  let data: ChatSettings;
+    let data: ChatSettings;
   try {
     data = await invoke<ChatSettings>('roof.getChatSettings', {chat_id: chatId});
   } catch(error) {
@@ -339,7 +325,7 @@ export async function openRoofChatSettings(chatId: number): Promise<void> {
       leave.onclick = async() => {
         if(!confirm('Покинуть этот чат?')) return;
         await invoke('roof.leaveChat', {chat_id: chatId});
-        overlay.remove();
+        void this.close();
         location.reload();
       };
       danger.append(leave);
@@ -350,7 +336,7 @@ export async function openRoofChatSettings(chatId: number): Promise<void> {
       deleteBtn.onclick = async() => {
         if(!confirm(`Удалить «${settings.title}» навсегда? Это действие нельзя отменить.`)) return;
         await invoke('roof.deleteChat', {chat_id: chatId});
-        overlay.remove();
+        void this.close();
         location.reload();
       };
       danger.append(deleteBtn);
@@ -407,5 +393,12 @@ export async function openRoofChatSettings(chatId: number): Promise<void> {
     modal.onclick = (event) => { if(event.target === modal) modal.remove(); };
   };
 
-  render(data);
+    render(data);
+  }
+}
+
+export function openRoofChatSettings(chatId: number): void {
+  const tab = appSidebarRight.createTab(RoofChatSettingsTab);
+  void tab.open(chatId);
+  appSidebarRight.toggleSidebar(true);
 }
