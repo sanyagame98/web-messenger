@@ -1,3 +1,4 @@
+import Icon from '@components/icon';
 import roofTransport from '@lib/roof/roofTransport';
 
 type RoofChatLike = {peerId?: any; container?: HTMLElement};
@@ -10,13 +11,8 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string): 
   return node;
 }
 
-function svg(name: 'mic' | 'send' | 'trash'): string {
-  const paths = {
-    mic: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/>',
-    send: '<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>',
-    trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v6M14 11v6"/>'
-  };
-  return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]}</svg>`;
+function icon(name: 'microphone' | 'send' | 'delete'): string {
+  return Icon(name).outerHTML;
 }
 
 async function inputPeer(chat: RoofChatLike): Promise<any> {
@@ -75,7 +71,7 @@ export function installRoofVoiceRecorder(chat: RoofChatLike): void {
     const button = el('button', 'roof-voice-button');
     button.type = 'button';
     button.title = 'Записать голосовое сообщение';
-    button.innerHTML = svg('mic');
+    button.innerHTML = icon('microphone');
     host.append(button);
 
     button.onclick = async() => {
@@ -95,11 +91,11 @@ export function installRoofVoiceRecorder(chat: RoofChatLike): void {
       const samples: number[] = [];
       const overlay = el('div', 'roof-voice-recording');
       const cancel = el('button', 'roof-voice-cancel');
-      cancel.type = 'button'; cancel.innerHTML = svg('trash');
+      cancel.type = 'button'; cancel.innerHTML = icon('delete');
       const pulse = el('span', 'roof-voice-dot');
       const timer = el('span', 'roof-voice-time'); timer.textContent = '0:00';
       const wave = el('canvas', 'roof-voice-live-wave'); wave.width = 180; wave.height = 34;
-      const send = el('button', 'roof-voice-send'); send.type = 'button'; send.innerHTML = svg('send');
+      const send = el('button', 'roof-voice-send'); send.type = 'button'; send.innerHTML = icon('send');
       overlay.append(cancel, pulse, timer, wave, send);
       host.append(overlay);
       button.classList.add('hide');
