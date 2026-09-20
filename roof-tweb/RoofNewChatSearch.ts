@@ -1,6 +1,5 @@
 import InputSearch from '@components/inputSearch';
 import Row from '@components/row';
-import Section from '@components/section';
 import SliderSuperTab from '@components/sliderTab';
 import appSidebarLeft from '@components/sidebarLeft';
 import appImManager from '@lib/appImManager';
@@ -17,6 +16,18 @@ type RoofUser = {
 };
 
 type Found = {users?: RoofUser[]};
+
+function nativeSection() {
+  const container = document.createElement('div');
+  container.className = 'sidebar-left-section-container';
+  const section = document.createElement('div');
+  section.className = 'sidebar-left-section';
+  const content = document.createElement('div');
+  content.className = 'sidebar-left-section-content';
+  section.append(content);
+  container.append(section);
+  return {container, content};
+}
 
 function initials(user: RoofUser) {
   const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || '?';
@@ -41,7 +52,7 @@ class RoofNewChatTab extends SliderSuperTab {
     this.inputSearch.input.placeholder = '@username';
     this.inputSearch.input.setAttribute('aria-label', 'Поиск пользователя по username');
 
-    const searchSection = new Section();
+    const searchSection = nativeSection();
     searchSection.container.classList.add('roof-native-search-section');
     searchSection.content.append(this.inputSearch.container);
 
@@ -84,7 +95,7 @@ class RoofNewChatTab extends SliderSuperTab {
       }
 
       this.hint.classList.add('hide');
-      const section = new Section();
+      const section = nativeSection();
       users.forEach((user) => section.content.append(this.renderUser(user)));
       this.results.append(section.container);
     } catch(error) {
