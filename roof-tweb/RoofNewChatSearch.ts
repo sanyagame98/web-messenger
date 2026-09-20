@@ -1,4 +1,5 @@
 import Icon from '@components/icon';
+import ButtonIcon from '@components/buttonIcon';
 import appImManager from '@lib/appImManager';
 import roofTransport from '@lib/roof/roofTransport';
 import {mountRoofPeerTitleStatus} from '@lib/roof/RoofPremiumEmojiPacks';
@@ -86,11 +87,9 @@ export function openRoofNewChatSearch(): void {
 
   const header = document.createElement('div');
   header.className = 'roof-new-chat-header';
-  const closeButton = document.createElement('button');
-  closeButton.type = 'button';
-  closeButton.className = 'roof-new-chat-back';
+  const closeButton = ButtonIcon('back');
+  closeButton.classList.add('roof-new-chat-back');
   closeButton.setAttribute('aria-label', 'Закрыть');
-  closeButton.replaceChildren(Icon('back'));
   const heading = document.createElement('div');
   heading.className = 'roof-new-chat-heading';
   heading.textContent = 'Новый чат';
