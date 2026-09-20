@@ -1,3 +1,4 @@
+import Icon from '@components/icon';
 import roofTransport from '@lib/roof/roofTransport';
 
 type RoofChatLike = {peerId?: any; container?: HTMLElement};
@@ -30,15 +31,8 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string): 
   return node;
 }
 
-function icon(name: 'comments' | 'back' | 'reply' | 'trash' | 'send'): string {
-  const paths = {
-    comments: '<path d="M21 15a4 4 0 0 1-4 4H8l-5 3v-15a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 9h8M8 13h5"/>',
-    back: '<path d="M15 18l-6-6 6-6"/>',
-    reply: '<path d="M9 17l-6-5 6-5v3c7 0 10 3 12 8-3-3-6-4-12-4v3z"/>',
-    trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v6M14 11v6"/>',
-    send: '<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>'
-  };
-  return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]}</svg>`;
+function icon(name: 'comments' | 'back' | 'reply' | 'delete' | 'send'): string {
+  return Icon(name).outerHTML;
 }
 
 function channelIdOf(chat: RoofChatLike): number {
@@ -205,7 +199,7 @@ async function openDiscussion(channelId: number, postId: number): Promise<void> 
       replyButton.onclick = () => { replyTo = comment; renderComposer(); };
       actions.append(replyButton);
       if(comment.can_edit) {
-        const remove = el('button', 'danger'); remove.type = 'button'; remove.innerHTML = `${icon('trash')}<span>Удалить</span>`;
+        const remove = el('button', 'danger'); remove.type = 'button'; remove.innerHTML = `${icon('delete')}<span>Удалить</span>`;
         remove.onclick = async() => {
           if(!confirm('Удалить комментарий?')) return;
           await roofTransport.invoke('roof.deletePostComment', {channel_id: channelId, post_id: postId, comment_id: comment.id});
