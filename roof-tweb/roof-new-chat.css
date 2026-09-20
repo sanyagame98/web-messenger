@@ -39,7 +39,7 @@
   cursor: pointer;
 }
 .roof-new-chat-back:hover { background: rgba(255,255,255,.07); }
-.roof-new-chat-back svg { width: 23px; height: 23px; }
+.roof-new-chat-back .tgico { width: 23px; height: 23px; }
 .roof-new-chat-heading { font-size: 18px; font-weight: 700; }
 .roof-new-chat-search {
   min-height: 46px;
@@ -56,7 +56,7 @@
   border-color: color-mix(in srgb, var(--roof-accent) 65%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--roof-accent) 13%, transparent);
 }
-.roof-new-chat-search svg { width: 20px; height: 20px; opacity: .58; flex: 0 0 auto; }
+.roof-new-chat-search .tgico { width: 20px; height: 20px; opacity: .58; flex: 0 0 auto; }
 .roof-new-chat-search input {
   width: 100%;
   min-width: 0;
