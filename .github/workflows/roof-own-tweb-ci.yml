@@ -91,9 +91,14 @@ jobs:
           grep -qi 'Roof' /tmp/roof-index.html
           grep -q '/roof-ui.css' /tmp/roof-index.html
           curl -fsS http://127.0.0.1:8080/roof-ui.css >/tmp/roof-ui.css
-          grep -q 'tgico-search' /tmp/roof-ui.css
-          grep -q 'roof-premium-card' /tmp/roof-ui.css
+          grep -q 'roof-native-saved-tab' /tmp/roof-ui.css
+          grep -q 'roof-native-new-chat-tab' /tmp/roof-ui.css
           grep -q 'Segoe UI Emoji' /tmp/roof-ui.css
+          ! grep -q 'data:image/svg+xml' /tmp/roof-ui.css
+          curl -fsS http://127.0.0.1:8080/assets/fonts/tgico.woff -o /tmp/tgico.woff
+          test -s /tmp/tgico.woff
+          curl -fsS http://127.0.0.1:8080/assets/img/premium-star.png -o /tmp/premium-star.png
+          test -s /tmp/premium-star.png
           EMAIL="ci-$GITHUB_RUN_ID@example.com"
           curl -fsS -X POST http://127.0.0.1:8080/api/auth/register -H 'Content-Type: application/json' -d "{\"email\":\"$EMAIL\",\"password\":\"roofpass123\"}" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['access_token']; assert d['user']['email'].startswith('ci-')"
       - name: Show logs on failure
@@ -115,7 +120,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker run --rm --entrypoint sh roof-web:local -c "test -s /usr/share/nginx/html/roof-ui.css && grep -q tgico-search /usr/share/nginx/html/roof-ui.css && grep -q roof-premium-card /usr/share/nginx/html/roof-ui.css && grep -q /roof-ui.css /usr/share/nginx/html/index.html"
+          docker run --rm --entrypoint sh roof-web:local -c "test -s /usr/share/nginx/html/roof-ui.css && grep -q roof-native-saved-tab /usr/share/nginx/html/roof-ui.css && grep -q roof-native-new-chat-tab /usr/share/nginx/html/roof-ui.css && ! grep -q 'data:image/svg+xml' /usr/share/nginx/html/roof-ui.css && test -s /usr/share/nginx/html/assets/fonts/tgico.woff && test -s /usr/share/nginx/html/assets/img/premium-star.png && grep -q /roof-ui.css /usr/share/nginx/html/index.html"
       - name: Create offline Roof package
         shell: bash
         run: |
