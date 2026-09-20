@@ -1,4 +1,5 @@
 import Icon from '@components/icon';
+import ButtonIcon from '@components/buttonIcon';
 import roofTransport from '@lib/roof/roofTransport';
 
 type RoofChatLike = {peerId?: any; container?: HTMLElement};
@@ -68,10 +69,9 @@ export function installRoofVoiceRecorder(chat: RoofChatLike): void {
     const host = findInput();
     if(!host || host.querySelector('.roof-voice-button')) return;
 
-    const button = el('button', 'roof-voice-button');
-    button.type = 'button';
+    const button = ButtonIcon('microphone');
+    button.classList.add('roof-voice-button');
     button.title = 'Записать голосовое сообщение';
-    button.innerHTML = icon('microphone');
     host.append(button);
 
     button.onclick = async() => {
@@ -90,12 +90,12 @@ export function installRoofVoiceRecorder(chat: RoofChatLike): void {
       const startedAt = performance.now();
       const samples: number[] = [];
       const overlay = el('div', 'roof-voice-recording');
-      const cancel = el('button', 'roof-voice-cancel');
-      cancel.type = 'button'; cancel.innerHTML = icon('delete');
+      const cancel = ButtonIcon('delete');
+      cancel.classList.add('roof-voice-cancel');
       const pulse = el('span', 'roof-voice-dot');
       const timer = el('span', 'roof-voice-time'); timer.textContent = '0:00';
       const wave = el('canvas', 'roof-voice-live-wave'); wave.width = 180; wave.height = 34;
-      const send = el('button', 'roof-voice-send'); send.type = 'button'; send.innerHTML = icon('send');
+      const send = ButtonIcon('send'); send.classList.add('roof-voice-send');
       overlay.append(cancel, pulse, timer, wave, send);
       host.append(overlay);
       button.classList.add('hide');
