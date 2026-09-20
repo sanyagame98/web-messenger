@@ -1,4 +1,5 @@
 import Icon from '@components/icon';
+import ButtonIcon from '@components/buttonIcon';
 import roofTransport from '@lib/roof/roofTransport';
 
 type RoofChatLike = {peerId?: any; container?: HTMLElement};
@@ -130,9 +131,8 @@ async function openDiscussion(channelId: number, postId: number): Promise<void> 
   let replyTo: Comment | null = null;
 
   const header = el('header', 'roof-discussion-header');
-  const back = el('button', 'roof-discussion-icon');
-  back.type = 'button';
-  back.innerHTML = icon('back');
+  const back = ButtonIcon('back');
+  back.classList.add('roof-discussion-icon');
   back.onclick = () => { overlay.remove(); if(activePanel?.overlay === overlay) activePanel = null; };
   const heading = el('div', 'roof-discussion-heading');
   const headingTitle = el('strong');
@@ -266,7 +266,7 @@ async function openDiscussion(channelId: number, postId: number): Promise<void> 
     const line = el('div', 'roof-discussion-input-line');
     const input = el('textarea', 'roof-discussion-input');
     input.placeholder = 'Комментарий'; input.rows = 1;
-    const send = el('button', 'roof-discussion-send'); send.type = 'button'; send.innerHTML = icon('send');
+    const send = ButtonIcon('send'); send.classList.add('roof-discussion-send');
     const submit = async() => {
       const text = input.value.trim(); if(!text) return;
       send.disabled = true;
