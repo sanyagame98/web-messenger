@@ -1,4 +1,5 @@
 import Icon from '@components/icon';
+import ButtonIcon from '@components/buttonIcon';
 import roofTransport from '@lib/roof/roofTransport';
 
 type RoofChatLike = {peerId?: any; container?: HTMLElement};
@@ -148,7 +149,7 @@ function openPreview(chat: RoofChatLike, files: File[]) {
   const panel = el('div', 'roof-media-preview-panel');
   const header = el('header', 'roof-media-preview-header');
   const title = el('strong'); title.textContent = items.length > 1 ? `Отправить ${items.length} файлов` : 'Отправить файл';
-  const close = el('button', 'roof-media-icon'); close.type = 'button'; close.innerHTML = icon('close');
+  const close = ButtonIcon('close'); close.classList.add('roof-media-icon');
   close.onclick = () => { cleanup(items); overlay.remove(); if(activeOverlay === overlay) activeOverlay = null; };
   header.append(title, close);
 
@@ -265,10 +266,9 @@ export function installRoofMediaUploader(chat: RoofChatLike): void {
     if(attachButton?.isConnected) return;
     const input = container.querySelector<HTMLElement>('.chat-input, .input-message-container, .chat-input-container');
     if(!input) return;
-    attachButton = el('button', 'roof-media-attach');
-    attachButton.type = 'button';
+    attachButton = ButtonIcon('attach');
+    attachButton.classList.add('roof-media-attach');
     attachButton.title = 'Фото, видео, аудио или файл';
-    attachButton.innerHTML = icon('attach');
     attachButton.onclick = (event) => { event.preventDefault(); event.stopPropagation(); fileInput.click(); };
     input.append(attachButton);
   };
