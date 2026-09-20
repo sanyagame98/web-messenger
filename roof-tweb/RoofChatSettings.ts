@@ -1,3 +1,4 @@
+import Icon from '@components/icon';
 import roofTransport from '@lib/roof/roofTransport';
 
 type AdminRights = Record<string, boolean>;
@@ -44,16 +45,8 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string): 
   return node;
 }
 
-function svg(name: 'close' | 'copy' | 'refresh' | 'camera' | 'trash' | 'leave'): string {
-  const paths = {
-    close: '<path d="M6 6l12 12M18 6L6 18"/>',
-    copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
-    refresh: '<path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/>',
-    camera: '<path d="M14.5 4l1.5 2H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l1.5-2h5z"/><circle cx="12" cy="13" r="4"/>',
-    trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v6M14 11v6"/>',
-    leave: '<path d="M10 17l5-5-5-5M15 12H3M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/>'
-  };
-  return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]}</svg>`;
+function svg(name: 'close' | 'copy' | 'rotate' | 'camera' | 'delete' | 'logout'): string {
+  return Icon(name).outerHTML;
 }
 
 async function invoke<T = any>(method: string, params: Record<string, unknown> = {}): Promise<T> {
@@ -247,7 +240,7 @@ export async function openRoofChatSettings(chatId: number): Promise<void> {
     };
     const reset = el('button', 'roof-chat-settings-icon');
     reset.type = 'button';
-    reset.innerHTML = svg('refresh');
+    reset.innerHTML = svg('rotate');
     reset.title = 'Создать новую ссылку';
     reset.onclick = async() => {
       if(!confirm('Старая ссылка перестанет быть основной. Создать новую?')) return;
@@ -345,7 +338,7 @@ export async function openRoofChatSettings(chatId: number): Promise<void> {
     if(!settings.is_owner) {
       const leave = el('button', 'roof-chat-settings-danger-btn');
       leave.type = 'button';
-      leave.innerHTML = `${svg('leave')}<span>Покинуть ${settings.type === 'channel' ? 'канал' : 'группу'}</span>`;
+      leave.innerHTML = `${svg('logout')}<span>Покинуть ${settings.type === 'channel' ? 'канал' : 'группу'}</span>`;
       leave.onclick = async() => {
         if(!confirm('Покинуть этот чат?')) return;
         await invoke('roof.leaveChat', {chat_id: chatId});
@@ -356,7 +349,7 @@ export async function openRoofChatSettings(chatId: number): Promise<void> {
     } else {
       const deleteBtn = el('button', 'roof-chat-settings-danger-btn');
       deleteBtn.type = 'button';
-      deleteBtn.innerHTML = `${svg('trash')}<span>Удалить чат навсегда</span>`;
+      deleteBtn.innerHTML = `${svg('delete')}<span>Удалить чат навсегда</span>`;
       deleteBtn.onclick = async() => {
         if(!confirm(`Удалить «${settings.title}» навсегда? Это действие нельзя отменить.`)) return;
         await invoke('roof.deleteChat', {chat_id: chatId});
