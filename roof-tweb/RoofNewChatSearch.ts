@@ -1,3 +1,4 @@
+import Icon from '@components/icon';
 import appImManager from '@lib/appImManager';
 import roofTransport from '@lib/roof/roofTransport';
 import {mountRoofPeerTitleStatus} from '@lib/roof/RoofPremiumEmojiPacks';
@@ -89,7 +90,7 @@ export function openRoofNewChatSearch(): void {
   closeButton.type = 'button';
   closeButton.className = 'roof-new-chat-back';
   closeButton.setAttribute('aria-label', 'Закрыть');
-  closeButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  closeButton.replaceChildren(Icon('back'));
   const heading = document.createElement('div');
   heading.className = 'roof-new-chat-heading';
   heading.textContent = 'Новый чат';
@@ -97,7 +98,7 @@ export function openRoofNewChatSearch(): void {
 
   const searchWrap = document.createElement('label');
   searchWrap.className = 'roof-new-chat-search';
-  searchWrap.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16.3 16.3 4.2 4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  searchWrap.append(Icon('search'));
   const input = document.createElement('input');
   input.type = 'text';
   input.autocomplete = 'off';
