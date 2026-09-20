@@ -49,12 +49,23 @@ COPY --from=build /src/tweb/dist/ /usr/share/nginx/html/
 COPY --from=build /src/roof/roof-ui.css /usr/share/nginx/html/roof-ui.css
 # Keep Roof-owned runtime assets independent from Vite public-dir copying.
 COPY --from=build /src/tweb/public/assets/roof-emoji/ /usr/share/nginx/html/assets/roof-emoji/
+# TWeb native icon font and Premium artwork are runtime assets referenced by CSS/DOM.
+COPY --from=build /src/tweb/public/assets/fonts/tgico.ttf /usr/share/nginx/html/assets/fonts/tgico.ttf
+COPY --from=build /src/tweb/public/assets/fonts/tgico.woff /usr/share/nginx/html/assets/fonts/tgico.woff
+COPY --from=build /src/tweb/public/assets/fonts/tgico.svg /usr/share/nginx/html/assets/fonts/tgico.svg
+COPY --from=build /src/tweb/public/assets/img/premium-star.png /usr/share/nginx/html/assets/img/premium-star.png
+COPY --from=build /src/tweb/public/assets/img/premium-star@2x.png /usr/share/nginx/html/assets/img/premium-star@2x.png
 RUN set -eux; \
     if ! grep -q '/roof-ui.css' /usr/share/nginx/html/index.html; then \
       sed -i 's#</head>#  <link rel="stylesheet" href="/roof-ui.css?v=roof-ui-v17">\n</head>#' /usr/share/nginx/html/index.html; \
     fi; \
     test -s /usr/share/nginx/html/roof-ui.css; \
     test -s /usr/share/nginx/html/assets/roof-emoji/emj.png; \
+    test -s /usr/share/nginx/html/assets/fonts/tgico.ttf; \
+    test -s /usr/share/nginx/html/assets/fonts/tgico.woff; \
+    test -s /usr/share/nginx/html/assets/fonts/tgico.svg; \
+    test -s /usr/share/nginx/html/assets/img/premium-star.png; \
+    test -s /usr/share/nginx/html/assets/img/premium-star@2x.png; \
     grep -q 'roof-saved-panel' /usr/share/nginx/html/roof-ui.css; \
     grep -q 'roof-voice-recording' /usr/share/nginx/html/roof-ui.css; \
     grep -q 'roof-media-preview-panel' /usr/share/nginx/html/roof-ui.css; \
