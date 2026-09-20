@@ -179,6 +179,54 @@ def patch_edit_profile() -> None:
     path.write_text(text, encoding="utf-8")
 
 
+
+def patch_native_premium() -> None:
+    path = ROOT / "src/components/popups/premium.ts"
+    text = path.read_text(encoding="utf-8")
+
+    old_loader = """    const [premiumPromo, appConfig] = await Promise.all([
+      this.managers.appPaymentsManager.getPremiumPromo(),
+      this.managers.apiManager.getAppConfig()
+    ]);"""
+    new_loader = """    const [premiumPromo, appConfig] = await Promise.all([
+      (this.managers.apiManager as any).invokeApi('roof.getPremiumPromo', {}),
+      (this.managers.apiManager as any).invokeApi('roof.getPremiumAppConfig', {})
+    ]);"""
+    if old_loader not in text:
+        fail("native Premium data loader not found")
+    text = text.replace(old_loader, new_loader, 1)
+
+    # Roof does not use Telegram-hosted premium promo videos. Keep the native
+    # TWeb popup/list/carousel, but never enter the video branch without a doc.
+    video_line = "      if(video) ff.videoPosition ??= 'bottom';\n"
+    if video_line not in text:
+        fail("native Premium video marker not found")
+    text = text.replace(
+        video_line,
+        "      if(video) ff.videoPosition ??= 'bottom';\n      else ff.videoPosition = undefined;\n",
+        1,
+    )
+
+    old_buy = """  public buyPremium() {
+    this.close(() => {
+      appImManager.openUrl(this.option.bot_url);
+    });
+  }"""
+    new_buy = """  public buyPremium() {
+    void (this.managers.apiManager as any).invokeApi('roof.beginPremiumPurchase', {
+      months: this.option?.months || 1
+    }).then((result: any) => {
+      const url = String(result?.url || '');
+      this.close(() => {
+        if(url) appImManager.openUrl(url);
+      });
+    }).catch(() => this.hide());
+  }"""
+    if old_buy not in text:
+        fail("native Premium purchase method not found")
+    text = text.replace(old_buy, new_buy, 1)
+    path.write_text(text, encoding="utf-8")
+
 def strip_entry_branding() -> None:
     vite_path = ROOT / "vite.config.ts"
     vite = vite_path.read_text(encoding="utf-8")
@@ -218,6 +266,7 @@ def verify() -> None:
     transport = (ROOT / "src/lib/roof/roofTransport.ts").read_text(encoding="utf-8")
     settings = (ROOT / "src/components/sidebarLeft/tabs/settings.tsx").read_text(encoding="utf-8")
     profile = (ROOT / "src/components/sidebarLeft/tabs/editProfile.tsx").read_text(encoding="utf-8")
+    premium_popup = (ROOT / "src/components/popups/premium.ts").read_text(encoding="utf-8")
     if "cachedNetworker.wrapApiCall(method, params, options)" in api:
         fail("MTProto invoke fallback remains")
     if "roofTransport.invoke" not in api:
@@ -236,6 +285,8 @@ def verify() -> None:
         fail("Roof Premium settings UI is missing")
     if "roof.updateEmojiStatus" not in profile or "ROOF_PREMIUM_STATUSES" not in profile:
         fail("Roof Premium emoji status UI is missing")
+    if "roof.getPremiumPromo" not in premium_popup or "roof.beginPremiumPurchase" not in premium_popup:
+        fail("native TWeb Premium popup is not wired to Roof")
     for prefix in ("149.154.175.", "149.154.167.", "149.154.171."):
         if prefix in dc:
             fail(f"Telegram DC address remains: {prefix}")
@@ -250,6 +301,7 @@ fix_roof_connection_status()
 fix_roof_auth_bootstrap()
 expire_invalid_roof_token()
 patch_edit_profile()
+patch_native_premium()
 strip_entry_branding()
 verify()
 print("[Roof TWeb patch] Roof transport, Roof Premium, Stars and emoji statuses installed")
