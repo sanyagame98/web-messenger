@@ -1,4 +1,5 @@
 import Icon from '@components/icon';
+import ButtonIcon from '@components/buttonIcon';
 import roofTransport from '@lib/roof/roofTransport';
 
 type AdminRights = Record<string, boolean>;
@@ -109,9 +110,8 @@ export async function openRoofChatSettings(chatId: number): Promise<void> {
   document.body.append(overlay);
 
   const header = el('div', 'roof-chat-settings-header');
-  const close = el('button', 'roof-chat-settings-icon');
-  close.type = 'button';
-  close.innerHTML = svg('close');
+  const close = ButtonIcon('close');
+  close.classList.add('roof-chat-settings-icon');
   close.onclick = () => overlay.remove();
   const title = el('div', 'roof-chat-settings-heading');
   title.textContent = 'Настройки Roof';
@@ -148,9 +148,8 @@ export async function openRoofChatSettings(chatId: number): Promise<void> {
     } else {
       avatarWrap.textContent = (settings.title || 'R').slice(0, 1).toUpperCase();
     }
-    const avatarButton = el('button', 'roof-chat-settings-avatar-edit');
-    avatarButton.type = 'button';
-    avatarButton.innerHTML = svg('camera');
+    const avatarButton = ButtonIcon('camera');
+    avatarButton.classList.add('roof-chat-settings-avatar-edit');
     const fileInput = el('input') as HTMLInputElement;
     fileInput.type = 'file';
     fileInput.accept = 'image/png,image/jpeg,image/webp,image/gif';
@@ -231,16 +230,14 @@ export async function openRoofChatSettings(chatId: number): Promise<void> {
     const invite = el('div', 'roof-chat-settings-invite');
     const inviteValue = el('code');
     inviteValue.textContent = settings.invite_link;
-    const copy = el('button', 'roof-chat-settings-icon');
-    copy.type = 'button';
-    copy.innerHTML = svg('copy');
+    const copy = ButtonIcon('copy');
+    copy.classList.add('roof-chat-settings-icon');
     copy.onclick = async() => {
       await navigator.clipboard?.writeText(settings.invite_link);
       toast('Ссылка скопирована');
     };
-    const reset = el('button', 'roof-chat-settings-icon');
-    reset.type = 'button';
-    reset.innerHTML = svg('rotate');
+    const reset = ButtonIcon('rotate');
+    reset.classList.add('roof-chat-settings-icon');
     reset.title = 'Создать новую ссылку';
     reset.onclick = async() => {
       if(!confirm('Старая ссылка перестанет быть основной. Создать новую?')) return;
