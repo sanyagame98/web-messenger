@@ -1,3 +1,4 @@
+import Icon from '@components/icon';
 import showForwardPopup from '@components/popups/forward';
 import roofTransport from '@lib/roof/roofTransport';
 
@@ -28,15 +29,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string): 
 }
 
 function icon(name: 'eye' | 'more' | 'copy' | 'forward' | 'channel' | 'admin'): string {
-  const paths = {
-    eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/>',
-    more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
-    copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
-    forward: '<path d="M15 8l5 4-5 4v-3H9c-3 0-5 1-6 4 0-6 3-9 9-9h3V8z"/>',
-    channel: '<path d="M4 10v4l10 4V6L4 10z"/><path d="M14 9c2 1 3 2 3 3s-1 2-3 3M6 14l1 5h3l-1-4"/>',
-    admin: '<circle cx="12" cy="8" r="3"/><path d="M5 20c1-4 3.5-6 7-6s6 2 7 6"/>'
-  };
-  return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]}</svg>`;
+  return Icon(name).outerHTML;
 }
 
 function channelIdOf(chat: RoofChatLike): number {
