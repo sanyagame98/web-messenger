@@ -1,5 +1,8 @@
-import Icon from '@components/icon';
-import ButtonIcon from '@components/buttonIcon';
+import InputSearch from '@components/inputSearch';
+import Row from '@components/row';
+import Section from '@components/section';
+import SliderSuperTab from '@components/sliderTab';
+import appSidebarLeft from '@components/sidebarLeft';
 import appImManager from '@lib/appImManager';
 import roofTransport from '@lib/roof/roofTransport';
 import {mountRoofPeerTitleStatus} from '@lib/roof/RoofPremiumEmojiPacks';
@@ -13,154 +16,125 @@ type RoofUser = {
   pFlags?: {premium?: boolean; verified?: boolean};
 };
 
-type Found = {
-  users?: RoofUser[];
-};
-
-let activeOverlay: HTMLElement | undefined;
+type Found = {users?: RoofUser[]};
 
 function initials(user: RoofUser) {
   const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || '?';
   return name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() || '').join('');
 }
 
-function close() {
-  activeOverlay?.remove();
-  activeOverlay = undefined;
-}
+class RoofNewChatTab extends SliderSuperTab {
+  private inputSearch: InputSearch;
+  private results: HTMLElement;
+  private hint: HTMLElement;
+  private generation = 0;
 
-function renderUser(user: RoofUser): HTMLButtonElement {
-  const row = document.createElement('button');
-  row.type = 'button';
-  row.className = 'roof-new-chat-user';
+  public async init() {
+    this.title.textContent = 'Новый чат';
+    this.container.classList.add('roof-native-new-chat-tab');
 
-  const avatar = document.createElement('span');
-  avatar.className = 'roof-new-chat-avatar';
-  avatar.textContent = initials(user);
+    this.inputSearch = new InputSearch({
+      debounceTime: 180,
+      noPlaceholderAnimation: true,
+      onChange: (value) => void this.search(value)
+    });
+    this.inputSearch.input.placeholder = '@username';
+    this.inputSearch.input.setAttribute('aria-label', 'Поиск пользователя по username');
 
-  const copy = document.createElement('span');
-  copy.className = 'roof-new-chat-copy';
-  const titleLine = document.createElement('span');
-  titleLine.className = 'roof-new-chat-title-line';
-  const title = document.createElement('span');
-  title.className = 'roof-new-chat-title';
-  title.textContent = `${user.first_name || ''} ${user.last_name || ''}`.trim() || `@${user.username || user.id}`;
-  const status = document.createElement('span');
-  status.className = 'roof-new-chat-status hide';
-  titleLine.append(title, status);
+    const searchSection = new Section();
+    searchSection.container.classList.add('roof-native-search-section');
+    searchSection.content.append(this.inputSearch.container);
 
-  const username = document.createElement('span');
-  username.className = 'roof-new-chat-username';
-  username.textContent = user.username ? `@${user.username}` : `ID ${user.id}`;
-  copy.append(titleLine, username);
-  row.append(avatar, copy);
+    this.hint = document.createElement('div');
+    this.hint.className = 'roof-native-tab-hint';
+    this.hint.textContent = 'Найди пользователя по @username';
 
-  void mountRoofPeerTitleStatus(status, Number(user.id), 19).then((visible) => {
-    status.classList.toggle('hide', !visible);
-  }).catch(() => status.classList.add('hide'));
+    this.results = document.createElement('div');
+    this.results.className = 'roof-native-rows';
 
-  row.addEventListener('click', async() => {
-    if(row.classList.contains('is-loading')) return;
-    row.classList.add('is-loading');
-    try {
-      await roofTransport.invoke('roof.openDirectChat', {user_id: user.id});
-      close();
-      appImManager.setInnerPeer({peerId: Number(user.id).toPeerId(false)});
-    } catch(error) {
-      row.classList.remove('is-loading');
-      console.error('Roof open direct chat failed', error);
-      const old = username.textContent;
-      username.textContent = 'Не удалось открыть чат';
-      setTimeout(() => username.textContent = old, 1600);
+    this.scrollable.append(searchSection.container, this.hint, this.results);
+    setTimeout(() => this.inputSearch.input.focus(), 20);
+  }
+
+  protected onCloseAfterTimeout() {
+    this.inputSearch?.remove();
+    super.onCloseAfterTimeout();
+  }
+
+  private async search(value: string) {
+    const query = value.trim().replace(/^@+/, '');
+    const current = ++this.generation;
+    this.results.replaceChildren();
+
+    if(query.length < 2) {
+      this.hint.textContent = query ? 'Введи минимум 2 символа username' : 'Найди пользователя по @username';
+      this.hint.classList.remove('hide');
+      return;
     }
-  });
-  return row;
+
+    this.hint.textContent = 'Поиск…';
+    this.hint.classList.remove('hide');
+    try {
+      const found = await roofTransport.invoke<Found>('contacts.search', {q: `@${query}`, limit: 30});
+      if(current !== this.generation) return;
+      const users = Array.isArray(found?.users) ? found.users : [];
+      if(!users.length) {
+        this.hint.textContent = `Пользователь @${query} не найден`;
+        return;
+      }
+
+      this.hint.classList.add('hide');
+      const section = new Section();
+      users.forEach((user) => section.content.append(this.renderUser(user)));
+      this.results.append(section.container);
+    } catch(error) {
+      if(current !== this.generation) return;
+      console.error('Roof username search failed', error);
+      this.hint.textContent = 'Ошибка поиска. Попробуй ещё раз.';
+    }
+  }
+
+  private renderUser(user: RoofUser): HTMLElement {
+    const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || `@${user.username || user.id}`;
+    const titleWrap = document.createElement('span');
+    titleWrap.className = 'roof-native-peer-title';
+    const title = document.createElement('span');
+    title.textContent = name;
+    const status = document.createElement('span');
+    status.className = 'roof-new-chat-status hide';
+    titleWrap.append(title, status);
+
+    const row = new Row({
+      title: titleWrap,
+      subtitle: user.username ? `@${user.username}` : `ID ${user.id}`,
+      clickable: async() => {
+        if(row.freezed) return;
+        row.freezed = true;
+        try {
+          await roofTransport.invoke('roof.openDirectChat', {user_id: user.id});
+          await this.close();
+          appImManager.setInnerPeer({peerId: Number(user.id).toPeerId(false)});
+        } catch(error) {
+          row.freezed = false;
+          console.error('Roof open direct chat failed', error);
+        }
+      }
+    });
+
+    const avatar = row.createMedia('small');
+    avatar.classList.add('roof-native-avatar');
+    avatar.textContent = initials(user);
+
+    void mountRoofPeerTitleStatus(status, Number(user.id), 19).then((visible) => {
+      status.classList.toggle('hide', !visible);
+    }).catch(() => status.classList.add('hide'));
+
+    return row.container;
+  }
 }
 
 export function openRoofNewChatSearch(): void {
-  close();
-
-  const overlay = document.createElement('div');
-  overlay.className = 'roof-new-chat-overlay';
-  const panel = document.createElement('div');
-  panel.className = 'roof-new-chat-panel';
-
-  const header = document.createElement('div');
-  header.className = 'roof-new-chat-header';
-  const closeButton = ButtonIcon('back');
-  closeButton.classList.add('roof-new-chat-back');
-  closeButton.setAttribute('aria-label', 'Закрыть');
-  const heading = document.createElement('div');
-  heading.className = 'roof-new-chat-heading';
-  heading.textContent = 'Новый чат';
-  header.append(closeButton, heading);
-
-  const searchWrap = document.createElement('label');
-  searchWrap.className = 'roof-new-chat-search';
-  searchWrap.append(Icon('search'));
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.autocomplete = 'off';
-  input.spellcheck = false;
-  input.placeholder = '@username';
-  input.setAttribute('aria-label', 'Поиск по username');
-  searchWrap.append(input);
-
-  const hint = document.createElement('div');
-  hint.className = 'roof-new-chat-hint';
-  hint.textContent = 'Найди пользователя по @username';
-  const results = document.createElement('div');
-  results.className = 'roof-new-chat-results';
-  panel.append(header, searchWrap, hint, results);
-  overlay.append(panel);
-  document.body.append(overlay);
-  activeOverlay = overlay;
-
-  closeButton.addEventListener('click', close);
-  overlay.addEventListener('click', (event) => {
-    if(event.target === overlay) close();
+  appSidebarLeft.closeTabsBefore(() => {
+    void appSidebarLeft.createTab(RoofNewChatTab).open();
   });
-  const onKey = (event: KeyboardEvent) => {
-    if(event.key === 'Escape') {
-      close();
-      document.removeEventListener('keydown', onKey);
-    }
-  };
-  document.addEventListener('keydown', onKey);
-
-  let generation = 0;
-  let timer: number | undefined;
-  const search = async() => {
-    const query = input.value.trim().replace(/^@+/, '');
-    const current = ++generation;
-    results.replaceChildren();
-    if(query.length < 2) {
-      hint.textContent = query ? 'Введи минимум 2 символа username' : 'Найди пользователя по @username';
-      hint.classList.remove('hide');
-      return;
-    }
-    hint.textContent = 'Поиск…';
-    hint.classList.remove('hide');
-    try {
-      const found = await roofTransport.invoke<Found>('contacts.search', {q: `@${query}`, limit: 30});
-      if(current !== generation) return;
-      const users = Array.isArray(found?.users) ? found.users : [];
-      if(!users.length) {
-        hint.textContent = `Пользователь @${query} не найден`;
-        return;
-      }
-      hint.classList.add('hide');
-      results.append(...users.map(renderUser));
-    } catch(error) {
-      if(current !== generation) return;
-      console.error('Roof username search failed', error);
-      hint.textContent = 'Ошибка поиска. Попробуй ещё раз.';
-    }
-  };
-
-  input.addEventListener('input', () => {
-    if(timer) clearTimeout(timer);
-    timer = window.setTimeout(() => void search(), 180);
-  });
-  setTimeout(() => input.focus(), 20);
 }
