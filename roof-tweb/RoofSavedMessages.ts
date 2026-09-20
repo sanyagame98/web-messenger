@@ -1,11 +1,22 @@
 import ButtonIcon from '@components/buttonIcon';
 import Icon from '@components/icon';
 import Row from '@components/row';
-import Section from '@components/section';
 import SliderSuperTab from '@components/sliderTab';
 import appSidebarLeft from '@components/sidebarLeft';
 import roofTransport from '@lib/roof/roofTransport';
 import {wrapTelegramEmojiText} from '@lib/roof/telegramEmojiAtlas';
+
+function nativeSection() {
+  const container = document.createElement('div');
+  container.className = 'sidebar-left-section-container';
+  const section = document.createElement('div');
+  section.className = 'sidebar-left-section';
+  const content = document.createElement('div');
+  content.className = 'sidebar-left-section-content';
+  section.append(content);
+  container.append(section);
+  return {container, content};
+}
 
 function renderText(text: string): HTMLElement {
   const node = document.createElement('span');
@@ -56,7 +67,7 @@ class RoofSavedMessagesTab extends SliderSuperTab {
     this.clearButton.classList.toggle('hide', !messages.length);
     if(!messages.length) return;
 
-    const section = new Section();
+    const section = nativeSection();
     messages.forEach((message: any) => {
       const remove = ButtonIcon('delete');
       remove.title = 'Убрать из Избранного';
