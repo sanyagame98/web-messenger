@@ -4,7 +4,7 @@ import Row from '@components/row';
 import SliderSuperTab from '@components/sliderTab';
 import appSidebarLeft from '@components/sidebarLeft';
 import roofTransport from '@lib/roof/roofTransport';
-import {wrapTelegramEmojiText} from '@lib/roof/telegramEmojiAtlas';
+import wrapEmojiText from '@lib/richTextProcessor/wrapEmojiText';
 
 function nativeSection() {
   const container = document.createElement('div');
@@ -20,11 +20,7 @@ function nativeSection() {
 
 function renderText(text: string): HTMLElement {
   const node = document.createElement('span');
-  try {
-    node.append(wrapTelegramEmojiText(text || ''));
-  } catch {
-    node.textContent = text || '';
-  }
+  node.append(wrapEmojiText(text || ''));
   return node;
 }
 
